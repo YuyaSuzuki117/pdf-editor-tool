@@ -93,7 +93,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       const blob = savePdfAsBlob(pdfBytes);
       downloadBlob(blob, getFilename());
       dispatch({ type: 'SET_MODIFIED', payload: false });
-      showDqToast('きろく石に きざみました！');
+      showDqToast('PDFを保存しました！');
       onClose();
     } catch (err) {
       alert('保存に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
@@ -112,7 +112,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       a.href = dataURL;
       a.download = `${filename.trim() || 'page'}_${state.currentPage}.png`;
       a.click();
-      showDqToast('ダンジョンの ちずを つくりました！');
+      showDqToast('画像を保存しました！');
       onClose();
     } finally {
       setSaving(false);
@@ -120,15 +120,15 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   };
 
   return (
-    <SlidePanel isOpen={isOpen} onClose={onClose} title="きろく石に きざむ">
+    <SlidePanel isOpen={isOpen} onClose={onClose} title="保存・書き出し">
       <div className="space-y-4">
         {state.isModified && (
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--ynk-gold)', borderRadius: 4, padding: '12px 16px' }}>
-            <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>はかいしんさま、まだ きざんで おりませぬぞ！</p>
+            <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>未保存の変更があります</p>
           </div>
         )}
         <div>
-          <label className="dq-text text-sm block mb-1" style={{ color: 'var(--ynk-gold)' }}>きろく石の なまえ</label>
+          <label className="dq-text text-sm block mb-1" style={{ color: 'var(--ynk-gold)' }}>ファイル名</label>
           <input
             value={filename}
             onChange={(e) => setFilename(e.target.value)}
@@ -138,7 +138,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
         </div>
         {saving && (
           <div>
-            <p className="dq-text text-xs mb-1" style={{ color: 'var(--ynk-gold)' }}>きろくちゅう...</p>
+            <p className="dq-text text-xs mb-1" style={{ color: 'var(--ynk-gold)' }}>保存中...</p>
             <div className="dq-progress" style={{ height: 8, background: 'rgba(0,0,0,0.4)', borderRadius: 4, border: '1px solid rgba(136,136,204,0.3)', overflow: 'hidden' }}>
               <div className="dq-progress-bar dq-progress-hp" style={{ width: '100%', animation: 'dq-hp-pulse 1s ease-in-out infinite alternate' }} />
             </div>
@@ -154,7 +154,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           ) : (
             <FileDown size={20} />
           )}
-          きろく石に きざめ！
+          PDFを保存
         </button>
         <button
           onClick={handleSaveImage}
@@ -163,7 +163,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
         >
           <Image size={20} />
-          ダンジョンの ちずを つくる
+          画像として保存（現在のページ）
         </button>
       </div>
     </SlidePanel>

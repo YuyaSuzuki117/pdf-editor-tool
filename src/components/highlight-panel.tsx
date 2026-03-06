@@ -19,22 +19,25 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const getPos = (e: React.TouchEvent) => {
+  const getPosFromTouch = (e: React.TouchEvent) => {
     const el = overlayRef.current!;
     const r = el.getBoundingClientRect();
     return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    startPos.current = getPos(e);
+  const getPosFromMouse = (e: React.MouseEvent) => {
+    const el = overlayRef.current!;
+    const r = el.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  const startSelection = (pos: { x: number; y: number }) => {
+    startPos.current = pos;
     setRect(null);
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const moveSelection = (pos: { x: number; y: number }) => {
     if (!startPos.current) return;
-    e.preventDefault();
-    const pos = getPos(e);
     const x = Math.min(startPos.current.x, pos.x);
     const y = Math.min(startPos.current.y, pos.y);
     const w = Math.abs(pos.x - startPos.current.x);
@@ -42,9 +45,30 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
     setRect({ x, y, w, h });
   };
 
-  const handleTouchEnd = () => {
+  const endSelection = () => {
     startPos.current = null;
   };
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    startSelection(getPosFromTouch(e));
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    moveSelection(getPosFromTouch(e));
+  };
+  const handleTouchEnd = () => endSelection();
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startSelection(getPosFromMouse(e));
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    moveSelection(getPosFromMouse(e));
+  };
+  const handleMouseUp = () => endSelection();
 
   const handleConfirm = useCallback(() => {
     if (!rect || rect.w < 5 || rect.h < 5) return;
@@ -67,11 +91,14 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
       {isOpen && (
         <div
           ref={overlayRef}
-          className="fixed inset-0 z-30 touch-none"
+          className="fixed inset-0 z-30 touch-none cursor-crosshair"
           style={{ top: 0, bottom: '70px' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
         >
           {rect && (
             <div
@@ -88,13 +115,13 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
           )}
         </div>
       )}
-      <SlidePanel isOpen={isOpen} onClose={onClose} title="ようがん ながし">
+      <SlidePanel isOpen={isOpen} onClose={onClose} title="マーカー">
         <div className="space-y-4">
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
-            <p className="dq-text text-sm">ようがんを ながす はんいを ドラッグで きめろ！</p>
+            <p className="dq-text text-sm">マーカーを引く範囲をドラッグで選択</p>
           </div>
           <div>
-            <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>ようがんの いろ</p>
+            <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>マーカーの色</p>
             <div className="flex gap-3">
               {highlightColors.map((c) => (
                 <button
@@ -109,7 +136,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
           </div>
           {rect && (
             <div className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
-              せんたく はんい: {Math.round(rect.w)} x {Math.round(rect.h)}px
+              選択範囲: {Math.round(rect.w)} x {Math.round(rect.h)}px
             </div>
           )}
           <button
@@ -117,7 +144,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
             disabled={!rect}
             className="dq-btn w-full"
           >
-            ようがん りゅうにゅう！
+            マーカーを追加
           </button>
         </div>
       </SlidePanel>

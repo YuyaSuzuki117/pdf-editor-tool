@@ -14,7 +14,7 @@
   --ynk-gold: #d4a017;
   --ynk-bone: #e8dcc8;
   --ynk-crystal: #7ec8e3;
-  --ynk-void: #1a1008;
+  --ynk-void: #0d0804;
 
   /* ウィンドウ */
   --window-bg: linear-gradient(180deg, #3d2a1e 0%, #2a1c12 100%);
@@ -22,7 +22,7 @@
   --window-border-outer: #2a1c12;
   --window-shadow: 0 4px 20px rgba(0,0,0,0.7);
 
-  --background: #1a1008;
+  --background: #0d0804;
   --foreground: #e8dcc8;
   --primary: #d4a017;
   --primary-dark: #a07010;
@@ -40,12 +40,53 @@ html, body {
 
 body {
   background: var(--background);
-  /* ダンジョンの土壁テクスチャ風パターン */
+  /* ダンジョン断面図：地層が見える土壁テクスチャ */
   background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(92,61,46,0.15) 19px, rgba(92,61,46,0.15) 20px),
-    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(92,61,46,0.15) 19px, rgba(92,61,46,0.15) 20px),
-    radial-gradient(ellipse at 30% 70%, rgba(92,61,46,0.2) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 30%, rgba(58,90,44,0.1) 0%, transparent 50%);
+    /* 地層ライン（横方向、間隔を変えて自然な地層に） */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(92,61,46,0.12) 40px,
+      rgba(92,61,46,0.18) 43px,
+      transparent 43px,
+      transparent 78px,
+      rgba(74,74,74,0.1) 78px,
+      rgba(74,74,74,0.15) 80px,
+      transparent 80px,
+      transparent 130px,
+      rgba(58,90,44,0.08) 130px,
+      rgba(58,90,44,0.12) 132px,
+      transparent 132px,
+      transparent 200px,
+      rgba(92,61,46,0.1) 200px,
+      rgba(92,61,46,0.14) 202px,
+      transparent 202px,
+      transparent 260px
+    ),
+    /* 縦のヒビ割れ */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 60px,
+      rgba(42,28,18,0.08) 60px,
+      rgba(42,28,18,0.12) 61px,
+      transparent 61px,
+      transparent 150px,
+      rgba(42,28,18,0.06) 150px,
+      rgba(42,28,18,0.1) 151px,
+      transparent 151px,
+      transparent 220px
+    ),
+    /* 深い部分のマグマの光 */
+    radial-gradient(ellipse at 50% 100%, rgba(204,68,34,0.06) 0%, transparent 40%),
+    /* 苔の層 */
+    radial-gradient(ellipse at 20% 30%, rgba(58,90,44,0.08) 0%, transparent 30%),
+    radial-gradient(ellipse at 80% 60%, rgba(58,90,44,0.06) 0%, transparent 25%),
+    /* 鉱石のかすかな輝き */
+    radial-gradient(circle at 15% 45%, rgba(126,200,227,0.04) 0%, transparent 8%),
+    radial-gradient(circle at 75% 25%, rgba(212,160,23,0.05) 0%, transparent 6%),
+    radial-gradient(circle at 60% 80%, rgba(126,200,227,0.03) 0%, transparent 7%);
   color: var(--foreground);
   font-family: 'DotGothic16', 'Noto Sans JP', monospace;
   image-rendering: pixelated;
@@ -56,7 +97,7 @@ body {
   background: var(--window-bg);
   border: 3px solid var(--window-border);
   outline: 3px solid var(--window-border-outer);
-  border-radius: 4px;
+  border-radius: 2px;
   box-shadow: var(--window-shadow),
     inset 0 1px 0 rgba(122,85,64,0.3),
     inset 0 -2px 0 rgba(0,0,0,0.3);
@@ -77,7 +118,7 @@ body {
 .dq-title {
   font-family: 'DotGothic16', monospace;
   color: var(--ynk-gold);
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.8), 0 0 8px rgba(212,160,23,0.3);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.8), 0 0 10px rgba(212,160,23,0.4), 0 0 20px rgba(212,160,23,0.15);
   letter-spacing: 0.08em;
 }
 
@@ -88,66 +129,155 @@ body {
   font-family: 'DotGothic16', monospace;
 }
 
-/* ===== 掘削ボタン ===== */
+/* ===== 掘削ボタン（8bit ピクセルアート強化） ===== */
 .dq-btn {
-  background: linear-gradient(180deg, #d4a017 0%, #a07010 100%);
+  background: linear-gradient(180deg, #d4a017 0%, #b88a10 40%, #a07010 100%);
   color: #1a1008;
   font-family: 'DotGothic16', monospace;
   font-weight: bold;
-  border: 3px solid #d4a017;
-  border-radius: 4px;
+  border: none;
+  border-radius: 0;
   padding: 10px 20px;
   text-shadow: 0 1px 0 rgba(255,255,255,0.2);
-  box-shadow: 0 3px 0 #6a4a08, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
-  transition: all 0.1s;
+  /* ピクセルアート段差表現 */
+  box-shadow:
+    /* 右下の段差（3D押し出し） */
+    4px 0 0 0 #6a4a08,
+    0 4px 0 0 #6a4a08,
+    4px 4px 0 0 #6a4a08,
+    /* 左上のハイライト */
+    -2px 0 0 0 #e8c040,
+    0 -2px 0 0 #e8c040,
+    -2px -2px 0 0 #e8c040,
+    /* 外側の黒枠 */
+    -4px 0 0 0 #1a1008,
+    4px 0 0 0 #1a1008,
+    0 -4px 0 0 #1a1008,
+    0 6px 0 0 #1a1008,
+    6px 0 0 0 #1a1008,
+    6px 6px 0 0 #1a1008,
+    -4px -4px 0 0 #1a1008,
+    /* ドロップシャドウ */
+    2px 8px 12px rgba(0,0,0,0.5);
+  transition: all 0.08s;
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20' font-size='20'%3E%E2%9B%8F%3C/text%3E%3C/svg%3E") 12 12, pointer;
   min-height: 48px;
   image-rendering: pixelated;
 }
 
 .dq-btn:active {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 #6a4a08, inset 0 2px 4px rgba(0,0,0,0.3);
+  transform: translate(2px, 4px);
+  box-shadow:
+    2px 0 0 0 #6a4a08,
+    0 2px 0 0 #6a4a08,
+    2px 2px 0 0 #6a4a08,
+    -2px 0 0 0 #e8c040,
+    0 -2px 0 0 #e8c040,
+    inset 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .dq-btn:disabled {
   background: linear-gradient(180deg, #555 0%, #333 100%);
-  border-color: #555;
   color: #888;
-  box-shadow: 0 2px 0 #222;
+  box-shadow:
+    2px 0 0 0 #222,
+    0 2px 0 0 #222,
+    2px 2px 0 0 #222,
+    -1px 0 0 0 #666,
+    0 -1px 0 0 #666;
   cursor: not-allowed;
 }
 
 .dq-btn-secondary {
   background: linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%);
   color: var(--ynk-bone);
-  border-color: var(--window-border);
-  box-shadow: 0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.5);
+  box-shadow:
+    3px 0 0 0 #2a1c12,
+    0 3px 0 0 #2a1c12,
+    3px 3px 0 0 #2a1c12,
+    -2px 0 0 0 #7a5540,
+    0 -2px 0 0 #7a5540,
+    -2px -2px 0 0 #7a5540,
+    2px 6px 10px rgba(0,0,0,0.5);
 }
 
 .dq-btn-danger {
   background: linear-gradient(180deg, #cc4422 0%, #992211 100%);
   color: #fff;
-  border-color: #cc4422;
-  box-shadow: 0 3px 0 #661100, 0 4px 8px rgba(0,0,0,0.5);
+  box-shadow:
+    3px 0 0 0 #661100,
+    0 3px 0 0 #661100,
+    3px 3px 0 0 #661100,
+    -2px 0 0 0 #ee6644,
+    0 -2px 0 0 #ee6644,
+    2px 6px 10px rgba(0,0,0,0.5);
+}
+
+/* ===== 小ボタン（ツールバー内用） ===== */
+.dq-btn-small {
+  background: linear-gradient(180deg, #d4a017 0%, #b88a10 40%, #a07010 100%);
+  color: #1a1008;
+  font-family: 'DotGothic16', monospace;
+  font-weight: bold;
+  font-size: 12px;
+  border: none;
+  border-radius: 0;
+  padding: 4px 10px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow:
+    2px 0 0 0 #6a4a08,
+    0 2px 0 0 #6a4a08,
+    2px 2px 0 0 #6a4a08,
+    -1px 0 0 0 #e8c040,
+    0 -1px 0 0 #e8c040,
+    -1px -1px 0 0 #e8c040,
+    1px 4px 6px rgba(0,0,0,0.4);
+  transition: all 0.08s;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20' font-size='20'%3E%E2%9B%8F%3C/text%3E%3C/svg%3E") 12 12, pointer;
+  min-height: 32px;
+  image-rendering: pixelated;
+}
+
+.dq-btn-small:active {
+  transform: translate(1px, 2px);
+  box-shadow:
+    1px 0 0 0 #6a4a08,
+    0 1px 0 0 #6a4a08,
+    inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.dq-btn-small:disabled {
+  background: linear-gradient(180deg, #555 0%, #333 100%);
+  color: #888;
+  box-shadow: 1px 0 0 0 #222, 0 1px 0 0 #222;
+  cursor: not-allowed;
+}
+
+/* ===== アノテーション表示 ===== */
+.dq-annotation {
+  position: absolute;
+  pointer-events: none;
 }
 
 /* ===== ダンジョン入力 ===== */
 .dq-input {
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.6);
   border: 3px solid var(--ynk-dirt);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--ynk-bone);
   padding: 10px 14px;
   font-family: 'DotGothic16', monospace;
   font-size: 16px;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.4),
+    inset 2px 0 0 rgba(0,0,0,0.2),
+    inset -2px 0 0 rgba(122,85,64,0.15);
 }
 
 .dq-input:focus {
   outline: none;
   border-color: var(--ynk-gold);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px rgba(212,160,23,0.3);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px rgba(212,160,23,0.3), 0 0 16px rgba(212,160,23,0.1);
 }
 
 .dq-input::placeholder {
@@ -157,15 +287,16 @@ body {
 /* ===== 掘削ゲージ ===== */
 .dq-progress {
   height: 10px;
-  background: rgba(0,0,0,0.5);
-  border-radius: 2px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 0;
   border: 2px solid var(--ynk-dirt);
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
 }
 
 .dq-progress-bar {
   height: 100%;
-  border-radius: 1px;
+  border-radius: 0;
   transition: width 0.5s ease;
 }
 
@@ -215,14 +346,64 @@ body {
   100% { transform: scale(1); }
 }
 
+/* 鉱石キラキラアニメーション */
+@keyframes ynk-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  20% { opacity: 1; transform: scale(1) rotate(72deg); }
+  40% { opacity: 0.6; transform: scale(0.8) rotate(144deg); }
+  60% { opacity: 1; transform: scale(1.1) rotate(216deg); }
+  80% { opacity: 0.4; transform: scale(0.7) rotate(288deg); }
+}
+
+@keyframes ynk-ore-glow {
+  0%, 100% { opacity: 0.3; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.5); }
+}
+
+@keyframes ynk-gold-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(212,160,23,0.3), 0 0 8px rgba(212,160,23,0.15); }
+  50% { box-shadow: 0 0 8px rgba(212,160,23,0.6), 0 0 16px rgba(212,160,23,0.3), 0 0 24px rgba(212,160,23,0.15); }
+}
+
+/* 選択中ツールのキラキラエフェクト */
+@keyframes ynk-active-sparkle {
+  0% { text-shadow: 0 0 4px rgba(212,160,23,0.5); }
+  25% { text-shadow: 0 0 8px rgba(212,160,23,0.8), 0 0 16px rgba(255,215,0,0.4); }
+  50% { text-shadow: 0 0 12px rgba(212,160,23,1), 0 0 20px rgba(255,215,0,0.6), 0 0 30px rgba(212,160,23,0.3); }
+  75% { text-shadow: 0 0 8px rgba(212,160,23,0.8), 0 0 16px rgba(255,215,0,0.4); }
+  100% { text-shadow: 0 0 4px rgba(212,160,23,0.5); }
+}
+
+/* 鉱石飛び散りアニメーション */
+@keyframes ynk-ore-burst-1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-30px, -40px) scale(0.3); opacity: 0; }
+}
+@keyframes ynk-ore-burst-2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(25px, -35px) scale(0.4); opacity: 0; }
+}
+@keyframes ynk-ore-burst-3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-15px, -50px) scale(0.2); opacity: 0; }
+}
+@keyframes ynk-ore-burst-4 {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(35px, -25px) scale(0.35); opacity: 0; }
+}
+
 .dq-bounce { animation: dq-bounce 1.2s ease-in-out infinite; }
 .dq-levelup { animation: dq-levelup 0.5s ease-in-out; }
 .ynk-shake { animation: ynk-shake 0.3s ease-in-out; }
+.ynk-sparkle { animation: ynk-sparkle 2s ease-in-out infinite; }
+.ynk-ore-glow { animation: ynk-ore-glow 1.5s ease-in-out infinite; }
+.ynk-gold-pulse { animation: ynk-gold-pulse 2s ease-in-out infinite; }
+.ynk-active-sparkle { animation: ynk-active-sparkle 1.5s ease-in-out infinite; }
 
 /* ===== スクロールバー ===== */
 ::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: #1a1008; border-left: 2px solid #3d2a1e; }
-::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5c3d2e, #3d2a1e); border-radius: 2px; border: 1px solid #7a5540; }
+::-webkit-scrollbar-track { background: #0d0804; border-left: 2px solid #3d2a1e; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5c3d2e, #3d2a1e); border-radius: 0; border: 1px solid #7a5540; }
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a5540, #5c3d2e); }
 
 /* ===== PDF Canvas ===== */
@@ -254,4 +435,50 @@ body {
     2px 0 0 0 var(--ynk-dirt),
     0 -2px 0 0 var(--ynk-dirt),
     0 2px 0 0 var(--ynk-dirt);
+}
+
+/* ===== 石畳テクスチャ ===== */
+.ynk-stone-floor {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(74,74,74,0.15) 0px,
+      rgba(74,74,74,0.15) 1px,
+      transparent 1px,
+      transparent 48px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(74,74,74,0.1) 0px,
+      rgba(74,74,74,0.1) 1px,
+      transparent 1px,
+      transparent 24px
+    );
+}
+
+/* ===== ダンジョン壁テクスチャ（スライドパネル用） ===== */
+.ynk-dungeon-wall {
+  background-image:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 30px,
+      rgba(92,61,46,0.15) 30px,
+      rgba(92,61,46,0.2) 32px,
+      transparent 32px,
+      transparent 55px,
+      rgba(74,74,74,0.08) 55px,
+      rgba(74,74,74,0.12) 56px,
+      transparent 56px,
+      transparent 90px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(42,28,18,0.08) 40px,
+      rgba(42,28,18,0.1) 41px,
+      transparent 41px,
+      transparent 90px
+    );
 }

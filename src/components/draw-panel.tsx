@@ -61,22 +61,25 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   }, []);
 
-  const getPos = (e: React.TouchEvent) => {
+  const getPosFromTouch = (e: React.TouchEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    isDrawing.current = true;
-    currentPath.current = [getPos(e)];
+  const getPosFromMouse = (e: React.MouseEvent) => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const startDraw = (pos: { x: number; y: number }) => {
+    isDrawing.current = true;
+    currentPath.current = [pos];
+  };
+
+  const moveDraw = (pos: { x: number; y: number }) => {
     if (!isDrawing.current) return;
-    e.preventDefault();
-    const pos = getPos(e);
     currentPath.current.push(pos);
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -91,7 +94,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     ctx.stroke();
   };
 
-  const handleTouchEnd = () => {
+  const endDraw = () => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
     pathsRef.current.push({
@@ -101,6 +104,28 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     });
     currentPath.current = [];
   };
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    startDraw(getPosFromTouch(e));
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    moveDraw(getPosFromTouch(e));
+  };
+  const handleTouchEnd = () => endDraw();
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startDraw(getPosFromMouse(e));
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    moveDraw(getPosFromMouse(e));
+  };
+  const handleMouseUp = () => endDraw();
+  const handleMouseLeave = () => endDraw();
 
   const handleUndo = () => {
     pathsRef.current.pop();
@@ -139,9 +164,13 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
         />
       )}
-      <SlidePanel isOpen={isOpen} onClose={onClose} title="ほりえ">
+      <SlidePanel isOpen={isOpen} onClose={onClose} title="フリーハンド描画">
         <div className="space-y-4">
           <div className="flex gap-2">
             <button
@@ -149,14 +178,14 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
               className={`dq-btn-small flex items-center gap-2 px-4 py-2 min-h-[44px] ${!isEraser ? '' : ''}`}
               style={!isEraser ? {} : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
             >
-              <Pencil size={18} /> つるはし
+              <Pencil size={18} /> ペン
             </button>
             <button
               onClick={() => setIsEraser(true)}
               className={`dq-btn-small flex items-center gap-2 px-4 py-2 min-h-[44px]`}
               style={isEraser ? {} : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
             >
-              <Eraser size={18} /> うめもどし
+              <Eraser size={18} /> 消しゴム
             </button>
             <button onClick={handleUndo} className="dq-btn-small flex items-center justify-center min-h-[44px] min-w-[44px]" style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}>
               <Undo2 size={18} />
@@ -167,7 +196,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
           </div>
           {!isEraser && (
             <div>
-              <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>こうみゃくの いろ</p>
+              <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>ペンの色</p>
               <div className="flex gap-3">
                 {strokeColors.map((c) => (
                   <button
@@ -181,7 +210,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
             </div>
           )}
           <div>
-            <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>みぞの ふかさ</p>
+            <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>線の太さ</p>
             <div className="flex gap-2">
               {strokeWidths.map((w) => (
                 <button
@@ -199,7 +228,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
             onClick={handleConfirm}
             className="dq-btn w-full"
           >
-            ほりえ かんせい！
+            描画を確定
           </button>
         </div>
       </SlidePanel>

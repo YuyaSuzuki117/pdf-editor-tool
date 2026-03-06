@@ -89,24 +89,67 @@ export default function DqDropZone() {
       onDrop={handleDrop}
     >
       <div
-        className={`dq-window w-full max-w-sm p-8 flex flex-col items-center gap-6 transition-all ${
-          isDragging ? 'scale-105 border-[var(--ynk-gold)]' : ''
+        className={`dq-window w-full max-w-sm p-8 flex flex-col items-center gap-6 transition-all relative overflow-hidden ${
+          isDragging ? 'scale-105' : ''
         }`}
-        style={{ background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)', borderColor: '#5c4a2e' }}
+        style={{
+          background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',
+          borderColor: isDragging ? '#d4a017' : '#5c4a2e',
+          boxShadow: isDragging
+            ? '0 0 20px rgba(212,160,23,0.4), 0 0 40px rgba(212,160,23,0.2), inset 0 0 30px rgba(212,160,23,0.1)'
+            : '0 4px 20px rgba(0,0,0,0.7)',
+        }}
       >
+        {/* ダンジョン入口の装飾アーチ */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 8,
+            background: 'repeating-linear-gradient(90deg, #4a4a4a 0px, #4a4a4a 20px, #3a3a3a 20px, #3a3a3a 22px, #5a5a5a 22px, #5a5a5a 40px)',
+            borderBottom: '2px solid #2a2a2a',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* 鉱石飛び散りエフェクト（ドラッグ中） */}
+        {isDragging && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <span style={{ position: 'absolute', top: '40%', left: '30%', fontSize: 16, animation: 'ynk-ore-burst-1 0.8s ease-out infinite' }}>💎</span>
+            <span style={{ position: 'absolute', top: '45%', left: '55%', fontSize: 14, animation: 'ynk-ore-burst-2 0.9s ease-out infinite 0.1s' }}>✨</span>
+            <span style={{ position: 'absolute', top: '50%', left: '40%', fontSize: 12, animation: 'ynk-ore-burst-3 0.7s ease-out infinite 0.2s' }}>🪨</span>
+            <span style={{ position: 'absolute', top: '42%', left: '65%', fontSize: 15, animation: 'ynk-ore-burst-4 0.85s ease-out infinite 0.15s' }}>⛏</span>
+          </div>
+        )}
+
         {/* ----- IDLE: ダンジョンを掘り出す ----- */}
         {phase === 'idle' && (
           <>
-            <DqSlime size={80} bounce>
-              はかいしんさま、あたらしい PDFを ほりだしますか？
-            </DqSlime>
+            {isDragging ? (
+              <div className="flex flex-col items-center gap-4">
+                <div className="dq-title text-lg ynk-active-sparkle" style={{ fontSize: 20 }}>
+                  ⚠ 勇者がちかづいてきた！
+                </div>
+                <div className="dq-text text-sm text-center">
+                  いまだ！ ファイルを おとせ！
+                </div>
+              </div>
+            ) : (
+              <>
+                <DqSlime size={80} bounce>
+                  はかいしんさま、あたらしい PDFを ほりだしますか？
+                </DqSlime>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="dq-btn text-lg px-8"
-            >
-              はい
-            </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="dq-btn text-lg px-8"
+                >
+                  ⛏ ほりだす！
+                </button>
+              </>
+            )}
           </>
         )}
 
@@ -120,7 +163,7 @@ export default function DqDropZone() {
             {/* 掘削ゲージ */}
             <div className="w-full max-w-[240px]">
               <div className="flex justify-between mb-1">
-                <span className="dq-text text-xs">くっさく</span>
+                <span className="dq-text text-xs">⛏ くっさく</span>
                 <span className="dq-text text-xs">{Math.round(progress)}%</span>
               </div>
               <div className="dq-progress">
@@ -155,6 +198,20 @@ export default function DqDropZone() {
             const f = e.target.files?.[0];
             if (f) handleFile(f);
             e.target.value = '';
+          }}
+        />
+
+        {/* ダンジョン入口の底部装飾 */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 6,
+            background: 'repeating-linear-gradient(90deg, #3a3a3a 0px, #3a3a3a 15px, #2a2a2a 15px, #2a2a2a 17px, #4a4a4a 17px, #4a4a4a 30px)',
+            borderTop: '1px solid #5a5a5a',
+            pointerEvents: 'none',
           }}
         />
       </div>

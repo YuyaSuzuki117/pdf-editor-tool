@@ -45,7 +45,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
   const handleDelete = async (pageIndex: number) => {
     if (!state.pdfData || state.numPages <= 1) return;
-    if (!confirm(`この かいそうを はかいしますか？`)) return;
+    if (!confirm(`ページ${pageIndex + 1}を削除しますか？`)) return;
     const newBytes = await deletePage(state.pdfData, pageIndex);
     const newNumPages = state.numPages - 1;
     dispatch({
@@ -82,7 +82,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--background)' }}>
       <div className="dq-window flex items-center justify-between p-4" style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}>
-        <h2 className="dq-title text-lg">ダンジョン かいそう かんり</h2>
+        <h2 className="dq-title text-lg">ページ管理</h2>
         <div className="flex gap-2">
           <button
             onClick={handleInsertPDF}

@@ -2,8 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PDF編集ツール",
-  description: "モバイル対応のPDF編集ツール",
+  title: "はかいしんのPDF工房 | ダンジョン文書管理",
+  description: "ダンジョンの奥深くで文書を掘削・編集するPDFツール",
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏</text></svg>",
+  },
 };
 
 export const viewport: Viewport = {
@@ -11,7 +14,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: "#1a1008",
+  themeColor: "#0d0804",
 };
 
 export default function RootLayout({

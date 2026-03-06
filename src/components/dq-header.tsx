@@ -32,12 +32,30 @@ export default function DqHeader() {
   return (
     <header
       className="dq-window h-14 flex items-center justify-between px-3 rounded-none border-x-0 border-t-0 z-50 shrink-0"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)', borderBottom: '3px solid #5c4a2e' }}
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        background: 'linear-gradient(180deg, #4a3a28 0%, #3b2a1a 30%, #2a1e12 60%, #1e1508 100%)',
+        borderBottom: '3px solid #5c4a2e',
+        /* 石の梁のような天井テクスチャ */
+        backgroundImage: `
+          linear-gradient(180deg, #4a3a28 0%, #3b2a1a 30%, #2a1e12 60%, #1e1508 100%),
+          repeating-linear-gradient(90deg, transparent 0px, transparent 50px, rgba(74,58,40,0.15) 50px, rgba(74,58,40,0.15) 52px, transparent 52px, transparent 100px),
+          repeating-linear-gradient(90deg, transparent 0px, transparent 25px, rgba(42,30,18,0.1) 25px, rgba(42,30,18,0.1) 26px, transparent 26px, transparent 50px)
+        `,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.6), inset 0 -2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(122,85,64,0.2)',
+      }}
     >
       {/* 左: 魔物アイコン + タイトル */}
       <div className="flex items-center gap-2 min-w-0">
         <DqSlime size={28} bounce={false} />
-        <h1 className="dq-title text-base truncate">はかいしんの PDF</h1>
+        <div className="flex flex-col min-w-0">
+          <h1 className="dq-title text-base truncate leading-tight">⛏ はかいしんの PDF工房</h1>
+          {hasPdf && state.file && (
+            <span className="dq-text text-[9px] truncate opacity-60 leading-tight" style={{ maxWidth: 160 }}>
+              {state.file.name}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 中央: ページナビ */}
