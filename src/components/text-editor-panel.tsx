@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
+import { loadSettings, saveSettings } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation, TextStyle } from '@/types/pdf';
 
@@ -22,9 +23,10 @@ const colors = [
 export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [text, setText] = useState('');
-  const [fontSize, setFontSize] = useState(16);
-  const [fontFamily, setFontFamily] = useState('Noto Sans JP');
-  const [color, setColor] = useState('#000000');
+  const settings = loadSettings();
+  const [fontSize, setFontSize] = useState(settings.textFontSize || 16);
+  const [fontFamily, setFontFamily] = useState(settings.textFontFamily || 'Noto Sans JP');
+  const [color, setColor] = useState(settings.textColor || '#000000');
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);
   const [tapRenderScale, setTapRenderScale] = useState(1);
   // 再編集モード用
@@ -59,6 +61,11 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
     window.addEventListener('edit-annotation', handler);
     return () => window.removeEventListener('edit-annotation', handler);
   }, [dispatch]);
+
+  // 設定変更時に保存
+  useEffect(() => {
+    saveSettings({ textFontSize: fontSize, textColor: color, textFontFamily: fontFamily });
+  }, [fontSize, color, fontFamily]);
 
   // パネルを閉じたらリセット
   useEffect(() => {

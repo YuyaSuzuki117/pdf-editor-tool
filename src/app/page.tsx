@@ -17,16 +17,20 @@ import AnnotationList from '@/components/annotation-list';
 import Onboarding from '@/components/onboarding';
 import { ErrorBoundary } from '@/components/error-boundary';
 import DqConfirmProvider from '@/components/dq-confirm';
+import ShortcutHelp from '@/components/shortcut-help';
 import { showDqToast } from '@/lib/toast';
+import { saveDraft, loadDraft, clearDraft } from '@/lib/auto-draft';
 
 function PDFApp() {
-  const { state, dispatch, undoStackSize } = usePDF();
+  const { state, dispatch, undoStackSize, redoStackSize } = usePDF();
   const isModifiedRef = useRef(state.isModified);
   isModifiedRef.current = state.isModified;
   const stateRef = useRef(state);
   stateRef.current = state;
   const undoStackSizeRef = useRef(undoStackSize);
   undoStackSizeRef.current = undoStackSize;
+  const redoStackSizeRef = useRef(redoStackSize);
+  redoStackSizeRef.current = redoStackSize;
 
   // 未保存警告: beforeunload
   useEffect(() => {
@@ -39,6 +43,40 @@ function PDFApp() {
     return () => window.removeEventListener('beforeunload', handler);
   }, []);
 
+  // 自動下書き保存（アノテーション変更時に2秒debounce）
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!state.file || !state.pdfData) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      saveDraft(state.file!.name, state.annotations);
+    }, 2000);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [state.annotations, state.file, state.pdfData]);
+
+  // 保存成功時に下書きをクリア
+  useEffect(() => {
+    if (!state.isModified && state.pdfData) {
+      clearDraft();
+    }
+  }, [state.isModified, state.pdfData]);
+
+  // 下書き復元の通知（PDF読み込み時）
+  useEffect(() => {
+    if (!state.file) return;
+    const draft = loadDraft();
+    if (draft && draft.fileName === state.file.name && draft.annotations.length > 0 && state.annotations.length === 0) {
+      // 復元するか尋ねる（次ティック）
+      setTimeout(() => {
+        showDqToast(`前回の下書き(${draft.annotations.length}件)があります`, 'info');
+        for (const ann of draft.annotations) {
+          dispatch({ type: 'ADD_ANNOTATION', payload: ann });
+        }
+      }, 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.file?.name]);
+
   // キーボードショートカット
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const s = stateRef.current;
@@ -46,12 +84,30 @@ function PDFApp() {
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
 
+    // Ctrl+Shift+Z / Cmd+Shift+Z: やり直し (Redo)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+      e.preventDefault();
+      if (redoStackSizeRef.current > 0) {
+        dispatch({ type: 'REDO_ANNOTATION' });
+        showDqToast('やりなおした！', 'info');
+      }
+      return;
+    }
     // Ctrl+Z / Cmd+Z: 元に戻す
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       if (undoStackSizeRef.current > 0) {
         dispatch({ type: 'UNDO_ANNOTATION' });
         showDqToast('ひとつ もどした！', 'info');
+      }
+      return;
+    }
+    // Ctrl+Y: やり直し (Redo alternative)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+      e.preventDefault();
+      if (redoStackSizeRef.current > 0) {
+        dispatch({ type: 'REDO_ANNOTATION' });
+        showDqToast('やりなおした！', 'info');
       }
       return;
     }
@@ -108,6 +164,7 @@ function PDFApp() {
       <SavePanel isOpen={state.toolMode === 'save'} onClose={closePanel} />
       <AnnotationList />
       <Onboarding />
+      <ShortcutHelp />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Pencil, Eraser, Undo2, Trash2, X } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
+import { loadSettings, saveSettings } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
@@ -20,8 +21,9 @@ const strokeWidths = [1, 2, 4, 8];
 export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [strokeColor, setStrokeColor] = useState('#000000');
-  const [strokeWidth, setStrokeWidth] = useState(2);
+  const settings = loadSettings();
+  const [strokeColor, setStrokeColor] = useState(settings.drawColor || '#000000');
+  const [strokeWidth, setStrokeWidth] = useState(settings.drawWidth || 2);
   const [isEraser, setIsEraser] = useState(false);
   const pathsRef = useRef<{ points: { x: number; y: number }[]; color: string; width: number }[]>([]);
   const currentPath = useRef<{ x: number; y: number }[]>([]);
@@ -32,6 +34,11 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const updateStrokeCount = useCallback(() => {
     setStrokeCount(pathsRef.current.length);
   }, []);
+
+  // 設定変更時に保存
+  useEffect(() => {
+    saveSettings({ drawColor: strokeColor, drawWidth: strokeWidth });
+  }, [strokeColor, strokeWidth]);
 
   const positionCanvas = useCallback(() => {
     const canvas = canvasRef.current;

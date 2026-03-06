@@ -544,6 +544,20 @@ export default function PDFViewer() {
     dispatch({ type: 'UPDATE_ANNOTATION', payload: { id, updates } });
   }, [dispatch]);
 
+  // Ctrl+Wheel ズーム
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      dispatch({ type: 'SET_SCALE', payload: state.scale + delta });
+    };
+    container.addEventListener('wheel', handler, { passive: false });
+    return () => container.removeEventListener('wheel', handler);
+  }, [dispatch, state.scale]);
+
   // テキストモード以外のときカーソルをリセット
   useEffect(() => {
     if (state.toolMode !== 'text') {

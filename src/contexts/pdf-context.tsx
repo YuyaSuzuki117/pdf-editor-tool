@@ -23,11 +23,13 @@ type UndoEntry =
 interface ReducerState {
   pdfState: PDFState;
   undoStack: UndoEntry[];
+  redoStack: UndoEntry[];
 }
 
 const initialReducerState: ReducerState = {
   pdfState: initialState,
   undoStack: [],
+  redoStack: [],
 };
 
 function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
@@ -44,6 +46,7 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           scale: 1,
         },
         undoStack: [],
+        redoStack: [],
       };
     case 'SET_PAGE':
       return {
@@ -71,6 +74,7 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           isModified: true,
         },
         undoStack: [...state.undoStack, { kind: 'added', annotation: action.payload }],
+        redoStack: [],
       };
     case 'REMOVE_ANNOTATION': {
       const removed = s.annotations.find((a) => a.id === action.payload);
@@ -81,6 +85,7 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           isModified: true,
         },
         undoStack: removed ? [...state.undoStack, { kind: 'removed', annotation: removed }] : state.undoStack,
+        redoStack: [],
       };
     }
     case 'UPDATE_ANNOTATION':
@@ -114,17 +119,12 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
       if (state.undoStack.length === 0) return state;
       const entry = state.undoStack[state.undoStack.length - 1];
       if (entry.kind === 'removed') {
-        // 削除を戻す → アノテーションを復元
         return {
-          pdfState: {
-            ...s,
-            annotations: [...s.annotations, entry.annotation],
-            isModified: true,
-          },
+          pdfState: { ...s, annotations: [...s.annotations, entry.annotation], isModified: true },
           undoStack: state.undoStack.slice(0, -1),
+          redoStack: [...state.redoStack, entry],
         };
       } else {
-        // 追加を戻す → アノテーションを削除
         return {
           pdfState: {
             ...s,
@@ -132,6 +132,30 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
             isModified: s.annotations.length > 1 || s.isModified,
           },
           undoStack: state.undoStack.slice(0, -1),
+          redoStack: [...state.redoStack, entry],
+        };
+      }
+    }
+    case 'REDO_ANNOTATION': {
+      if (state.redoStack.length === 0) return state;
+      const redoEntry = state.redoStack[state.redoStack.length - 1];
+      if (redoEntry.kind === 'removed') {
+        // redo a removal → remove again
+        return {
+          pdfState: {
+            ...s,
+            annotations: s.annotations.filter((a) => a.id !== redoEntry.annotation.id),
+            isModified: true,
+          },
+          undoStack: [...state.undoStack, redoEntry],
+          redoStack: state.redoStack.slice(0, -1),
+        };
+      } else {
+        // redo an addition → add again
+        return {
+          pdfState: { ...s, annotations: [...s.annotations, redoEntry.annotation], isModified: true },
+          undoStack: [...state.undoStack, redoEntry],
+          redoStack: state.redoStack.slice(0, -1),
         };
       }
     }
@@ -143,6 +167,7 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           isModified: s.annotations.length > 0 ? true : s.isModified,
         },
         undoStack: [],
+        redoStack: [],
       };
     case 'RESET':
       return initialReducerState;
@@ -155,6 +180,7 @@ const PDFContext = createContext<{
   state: PDFState;
   dispatch: React.Dispatch<PDFAction>;
   undoStackSize: number;
+  redoStackSize: number;
 } | null>(null);
 
 export function PDFProvider({ children }: { children: ReactNode }) {
@@ -167,7 +193,7 @@ export function PDFProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PDFContext.Provider value={{ state: reducerState.pdfState, dispatch, undoStackSize: reducerState.undoStack.length }}>
+    <PDFContext.Provider value={{ state: reducerState.pdfState, dispatch, undoStackSize: reducerState.undoStack.length, redoStackSize: reducerState.redoStack.length }}>
       {children}
     </PDFContext.Provider>
   );

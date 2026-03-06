@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2 } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
@@ -114,6 +114,24 @@ export default function AnnotationList() {
                     </p>
                   )}
                 </div>
+                {/* 複製ボタン */}
+                <button
+                  onClick={() => {
+                    const dup = {
+                      ...ann,
+                      id: crypto.randomUUID(),
+                      position: { x: ann.position.x + 10, y: ann.position.y + 10 },
+                      createdAt: Date.now(),
+                    };
+                    dispatch({ type: 'ADD_ANNOTATION', payload: dup });
+                  }}
+                  className="flex items-center justify-center w-6 h-6 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                  style={{ color: 'var(--ynk-gold)', flexShrink: 0 }}
+                  title="複製"
+                  aria-label={`${typeLabels[ann.type]}を複製`}
+                >
+                  <Copy size={12} />
+                </button>
                 {/* 削除ボタン */}
                 <button
                   onClick={() => dispatch({ type: 'REMOVE_ANNOTATION', payload: ann.id })}

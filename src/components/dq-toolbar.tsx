@@ -98,7 +98,7 @@ const tools: ToolDef[] = [
 ];
 
 const DqToolbar = React.memo(function DqToolbar() {
-  const { state, dispatch, undoStackSize } = usePDF();
+  const { state, dispatch, undoStackSize, redoStackSize } = usePDF();
   const prevToolRef = useRef(state.toolMode);
 
   const handleToolChange = useCallback((mode: ToolMode) => {
@@ -124,7 +124,7 @@ const DqToolbar = React.memo(function DqToolbar() {
       }}
     >
       <div className="flex items-stretch justify-around" role="toolbar" aria-label="PDF編集ツール">
-        {/* Undoボタン: undoStackに要素がある場合のみ表示 */}
+        {/* Undoボタン */}
         {undoStackSize > 0 && (
           <button
             onClick={() => dispatch({ type: 'UNDO_ANNOTATION' })}
@@ -137,6 +137,21 @@ const DqToolbar = React.memo(function DqToolbar() {
               <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
             <span className="dq-text text-[10px] leading-tight whitespace-nowrap">戻す</span>
+          </button>
+        )}
+        {/* Redoボタン */}
+        {redoStackSize > 0 && (
+          <button
+            onClick={() => dispatch({ type: 'REDO_ANNOTATION' })}
+            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
+            title="やり直し (Ctrl+Shift+Z)"
+            aria-label="やり直し"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+            </svg>
+            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">進む</span>
           </button>
         )}
         {tools.map(({ mode, label, icon, title }) => {

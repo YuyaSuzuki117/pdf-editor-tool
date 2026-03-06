@@ -68,5 +68,6 @@ export type PDFAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'UPDATE_PDF_DATA'; payload: { pdfData: ArrayBuffer; numPages: number } }
   | { type: 'UNDO_ANNOTATION' }
+  | { type: 'REDO_ANNOTATION' }
   | { type: 'CLEAR_ANNOTATIONS' }
   | { type: 'RESET' };
