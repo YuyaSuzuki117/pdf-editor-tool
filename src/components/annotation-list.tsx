@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Type, Pencil, Highlighter, Trash2 } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
+import { dqConfirm } from '@/components/dq-confirm';
 
 const typeIcons: Record<AnnotationType, React.ReactNode> = {
   text: <Type size={14} />,
@@ -130,8 +131,8 @@ export default function AnnotationList() {
           {/* フッター: 全削除 */}
           <div className="px-3 py-2" style={{ borderTop: '2px solid #5c4a2e' }}>
             <button
-              onClick={() => {
-                if (confirm('全てのアノテーションを削除しますか？')) {
+              onClick={async () => {
+                if (await dqConfirm('全てのアノテーションを\n削除しますか？')) {
                   dispatch({ type: 'CLEAR_ANNOTATIONS' });
                   setIsOpen(false);
                 }

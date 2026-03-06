@@ -45,5 +45,5 @@ export function showDqToast(message: string, type: ToastType = 'info') {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, 3500);
 }

@@ -16,9 +16,13 @@ const initialState: PDFState = {
   error: null,
 };
 
+type UndoEntry =
+  | { kind: 'removed'; annotation: Annotation }
+  | { kind: 'added'; annotation: Annotation };
+
 interface ReducerState {
   pdfState: PDFState;
-  undoStack: Annotation[];
+  undoStack: UndoEntry[];
 }
 
 const initialReducerState: ReducerState = {
@@ -61,12 +65,12 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
       return { ...state, pdfState: { ...s, toolMode: action.payload } };
     case 'ADD_ANNOTATION':
       return {
-        ...state,
         pdfState: {
           ...s,
           annotations: [...s.annotations, action.payload],
           isModified: true,
         },
+        undoStack: [...state.undoStack, { kind: 'added', annotation: action.payload }],
       };
     case 'REMOVE_ANNOTATION': {
       const removed = s.annotations.find((a) => a.id === action.payload);
@@ -76,7 +80,7 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           annotations: s.annotations.filter((a) => a.id !== action.payload),
           isModified: true,
         },
-        undoStack: removed ? [...state.undoStack, removed] : state.undoStack,
+        undoStack: removed ? [...state.undoStack, { kind: 'removed', annotation: removed }] : state.undoStack,
       };
     }
     case 'UPDATE_ANNOTATION':
@@ -108,15 +112,28 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
       };
     case 'UNDO_ANNOTATION': {
       if (state.undoStack.length === 0) return state;
-      const restored = state.undoStack[state.undoStack.length - 1];
-      return {
-        pdfState: {
-          ...s,
-          annotations: [...s.annotations, restored],
-          isModified: true,
-        },
-        undoStack: state.undoStack.slice(0, -1),
-      };
+      const entry = state.undoStack[state.undoStack.length - 1];
+      if (entry.kind === 'removed') {
+        // 削除を戻す → アノテーションを復元
+        return {
+          pdfState: {
+            ...s,
+            annotations: [...s.annotations, entry.annotation],
+            isModified: true,
+          },
+          undoStack: state.undoStack.slice(0, -1),
+        };
+      } else {
+        // 追加を戻す → アノテーションを削除
+        return {
+          pdfState: {
+            ...s,
+            annotations: s.annotations.filter((a) => a.id !== entry.annotation.id),
+            isModified: s.annotations.length > 1 || s.isModified,
+          },
+          undoStack: state.undoStack.slice(0, -1),
+        };
+      }
     }
     case 'CLEAR_ANNOTATIONS':
       return {

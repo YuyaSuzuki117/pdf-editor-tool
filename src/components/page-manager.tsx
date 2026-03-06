@@ -6,6 +6,7 @@ import { usePDF } from '@/contexts/pdf-context';
 import { YuunamaLilith } from '@/components/dq-characters';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
 import { rotatePage, deletePage, mergePdfs, reorderPages } from '@/lib/pdf-editor';
+import { dqConfirm } from '@/components/dq-confirm';
 
 interface PageThumb {
   index: number;
@@ -67,7 +68,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
   const handleDelete = async (pageIndex: number) => {
     if (!state.pdfData || state.numPages <= 1) return;
-    if (!confirm(`ページ${pageIndex + 1}を削除しますか？`)) return;
+    if (!(await dqConfirm(`ページ${pageIndex + 1}を\n削除しますか？`))) return;
     const newBytes = await deletePage(state.pdfData, pageIndex);
     const newNumPages = state.numPages - 1;
     dispatch({

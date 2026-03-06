@@ -5,6 +5,7 @@ import { Pencil, Eraser, Undo2, Trash2, X } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
+import { dqConfirm } from '@/components/dq-confirm';
 
 const strokeColors = ['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b'];
 const strokeColorNames: Record<string, string> = {
@@ -197,18 +198,18 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     onClose();
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (pathsRef.current.length > 0) {
-      if (!confirm('未確定の描画があります。キャンセルしますか？')) return;
+      if (!(await dqConfirm('未確定の描画があります。\nキャンセルしますか？'))) return;
     }
     pathsRef.current = [];
     setStrokeCount(0);
     onClose();
   };
 
-  const handleCloseWithCheck = () => {
+  const handleCloseWithCheck = async () => {
     if (pathsRef.current.length > 0) {
-      if (!confirm('未確定の描画があります。閉じますか？')) return;
+      if (!(await dqConfirm('未確定の描画があります。\n閉じますか？'))) return;
     }
     pathsRef.current = [];
     setStrokeCount(0);

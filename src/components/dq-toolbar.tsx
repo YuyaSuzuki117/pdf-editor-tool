@@ -129,8 +129,8 @@ const DqToolbar = React.memo(function DqToolbar() {
           <button
             onClick={() => dispatch({ type: 'UNDO_ANNOTATION' })}
             className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
-            title="直前の削除を戻す"
-            aria-label="直前の削除を戻す"
+            title="元に戻す (Ctrl+Z)"
+            aria-label="元に戻す"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1 4 1 10 7 10" />

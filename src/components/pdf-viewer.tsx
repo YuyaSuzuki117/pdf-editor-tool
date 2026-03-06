@@ -670,6 +670,27 @@ export default function PDFViewer() {
           {pageLabel}
         </div>
       )}
+      {/* モードインジケーター */}
+      {state.toolMode !== 'view' && state.toolMode !== 'pages' && state.toolMode !== 'save' && (
+        <div
+          className="fixed top-12 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
+          style={{
+            background: 'linear-gradient(180deg, rgba(42,30,18,0.95) 0%, rgba(26,16,8,0.9) 100%)',
+            border: '2px solid var(--ynk-gold)',
+            padding: '4px 16px',
+            fontFamily: 'DotGothic16, monospace',
+            fontSize: 12,
+            color: 'var(--ynk-gold)',
+            textShadow: '0 0 8px rgba(212,160,23,0.4)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+          }}
+        >
+          {state.toolMode === 'text' && 'テキストモード - PDFをタップして配置'}
+          {state.toolMode === 'draw' && 'フリーハンド描画モード'}
+          {state.toolMode === 'highlight' && 'マーカーモード - ドラッグで範囲選択'}
+          {state.toolMode === 'image' && 'スタンプモード - PDFをタップして配置'}
+        </div>
+      )}
     </div>
   );
 }
