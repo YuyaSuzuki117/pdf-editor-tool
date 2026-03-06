@@ -1,0 +1,257 @@
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* 勇なまカラーパレット */
+  --ynk-dirt: #5c3d2e;
+  --ynk-dirt-dark: #3d2a1e;
+  --ynk-dirt-light: #7a5540;
+  --ynk-stone: #4a4a4a;
+  --ynk-stone-light: #6b6b6b;
+  --ynk-moss: #3a5a2c;
+  --ynk-moss-light: #5a8a3c;
+  --ynk-magma: #cc4422;
+  --ynk-gold: #d4a017;
+  --ynk-bone: #e8dcc8;
+  --ynk-crystal: #7ec8e3;
+  --ynk-void: #1a1008;
+
+  /* ウィンドウ */
+  --window-bg: linear-gradient(180deg, #3d2a1e 0%, #2a1c12 100%);
+  --window-border: #7a5540;
+  --window-border-outer: #2a1c12;
+  --window-shadow: 0 4px 20px rgba(0,0,0,0.7);
+
+  --background: #1a1008;
+  --foreground: #e8dcc8;
+  --primary: #d4a017;
+  --primary-dark: #a07010;
+  --panel-bg: #3d2a1e;
+  --border: #5c3d2e;
+}
+
+html, body {
+  margin: 0; padding: 0;
+  overflow: hidden;
+  height: 100dvh;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--background);
+  /* ダンジョンの土壁テクスチャ風パターン */
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(92,61,46,0.15) 19px, rgba(92,61,46,0.15) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(92,61,46,0.15) 19px, rgba(92,61,46,0.15) 20px),
+    radial-gradient(ellipse at 30% 70%, rgba(92,61,46,0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 30%, rgba(58,90,44,0.1) 0%, transparent 50%);
+  color: var(--foreground);
+  font-family: 'DotGothic16', 'Noto Sans JP', monospace;
+  image-rendering: pixelated;
+}
+
+/* ===== ダンジョンウィンドウ ===== */
+.dq-window {
+  background: var(--window-bg);
+  border: 3px solid var(--window-border);
+  outline: 3px solid var(--window-border-outer);
+  border-radius: 4px;
+  box-shadow: var(--window-shadow),
+    inset 0 1px 0 rgba(122,85,64,0.3),
+    inset 0 -2px 0 rgba(0,0,0,0.3);
+  position: relative;
+}
+
+/* 石レンガ風の内枠 */
+.dq-window::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed rgba(122,85,64,0.3);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ===== テキスト ===== */
+.dq-title {
+  font-family: 'DotGothic16', monospace;
+  color: var(--ynk-gold);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.8), 0 0 8px rgba(212,160,23,0.3);
+  letter-spacing: 0.08em;
+}
+
+.dq-text {
+  color: var(--ynk-bone);
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+  line-height: 1.8;
+  font-family: 'DotGothic16', monospace;
+}
+
+/* ===== 掘削ボタン ===== */
+.dq-btn {
+  background: linear-gradient(180deg, #d4a017 0%, #a07010 100%);
+  color: #1a1008;
+  font-family: 'DotGothic16', monospace;
+  font-weight: bold;
+  border: 3px solid #d4a017;
+  border-radius: 4px;
+  padding: 10px 20px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 3px 0 #6a4a08, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: all 0.1s;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20' font-size='20'%3E%E2%9B%8F%3C/text%3E%3C/svg%3E") 12 12, pointer;
+  min-height: 48px;
+  image-rendering: pixelated;
+}
+
+.dq-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 #6a4a08, inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.dq-btn:disabled {
+  background: linear-gradient(180deg, #555 0%, #333 100%);
+  border-color: #555;
+  color: #888;
+  box-shadow: 0 2px 0 #222;
+  cursor: not-allowed;
+}
+
+.dq-btn-secondary {
+  background: linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%);
+  color: var(--ynk-bone);
+  border-color: var(--window-border);
+  box-shadow: 0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.5);
+}
+
+.dq-btn-danger {
+  background: linear-gradient(180deg, #cc4422 0%, #992211 100%);
+  color: #fff;
+  border-color: #cc4422;
+  box-shadow: 0 3px 0 #661100, 0 4px 8px rgba(0,0,0,0.5);
+}
+
+/* ===== ダンジョン入力 ===== */
+.dq-input {
+  background: rgba(0,0,0,0.5);
+  border: 3px solid var(--ynk-dirt);
+  border-radius: 4px;
+  color: var(--ynk-bone);
+  padding: 10px 14px;
+  font-family: 'DotGothic16', monospace;
+  font-size: 16px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.dq-input:focus {
+  outline: none;
+  border-color: var(--ynk-gold);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px rgba(212,160,23,0.3);
+}
+
+.dq-input::placeholder {
+  color: rgba(232,220,200,0.3);
+}
+
+/* ===== 掘削ゲージ ===== */
+.dq-progress {
+  height: 10px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 2px;
+  border: 2px solid var(--ynk-dirt);
+  overflow: hidden;
+}
+
+.dq-progress-bar {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.5s ease;
+}
+
+.dq-progress-hp { background: linear-gradient(90deg, #2a7a1a, #5aaa3c); }
+.dq-progress-mp { background: linear-gradient(90deg, #4488aa, #7ec8e3); }
+.dq-progress-xp { background: linear-gradient(90deg, #a07010, #d4a017); }
+
+/* ===== つるはしカーソル ===== */
+.dq-cursor { position: relative; }
+.dq-cursor::before {
+  content: '\26CF';
+  position: absolute;
+  left: -22px;
+  color: var(--ynk-gold);
+  animation: ynk-dig 0.4s infinite;
+  font-size: 14px;
+}
+
+@keyframes ynk-dig {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-30deg); }
+}
+
+/* ===== アニメーション ===== */
+@keyframes dq-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes ynk-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes ynk-dig-appear {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes dq-levelup {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.15); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.dq-bounce { animation: dq-bounce 1.2s ease-in-out infinite; }
+.dq-levelup { animation: dq-levelup 0.5s ease-in-out; }
+.ynk-shake { animation: ynk-shake 0.3s ease-in-out; }
+
+/* ===== スクロールバー ===== */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #1a1008; border-left: 2px solid #3d2a1e; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5c3d2e, #3d2a1e); border-radius: 2px; border: 1px solid #7a5540; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a5540, #5c3d2e); }
+
+/* ===== PDF Canvas ===== */
+.pdf-canvas-container {
+  touch-action: pan-x pan-y pinch-zoom;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ===== トースト ===== */
+.dq-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  animation: ynk-dig-appear 0.3s ease;
+}
+
+@keyframes dq-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ===== ピクセルボーダー ===== */
+.ynk-pixel-border {
+  box-shadow:
+    -2px 0 0 0 var(--ynk-dirt),
+    2px 0 0 0 var(--ynk-dirt),
+    0 -2px 0 0 var(--ynk-dirt),
+    0 2px 0 0 var(--ynk-dirt);
+}
