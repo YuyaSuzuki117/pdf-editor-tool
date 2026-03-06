@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useCallback, useRef } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { ToolMode } from '@/types/pdf';
 
@@ -54,6 +55,18 @@ const tools: ToolDef[] = [
     ),
   },
   {
+    mode: 'image',
+    label: '印 スタンプ',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <rect x="4" y="2" width="16" height="16" rx="2" />
+        <path d="M8 22h8" />
+        <path d="M12 18v4" />
+        <path d="M8 6h8M8 10h8M8 14h4" />
+      </svg>
+    ),
+  },
+  {
     mode: 'pages',
     label: '📄 ページ',
     icon: (
@@ -76,8 +89,21 @@ const tools: ToolDef[] = [
   },
 ];
 
-export default function DqToolbar() {
+const DqToolbar = React.memo(function DqToolbar() {
   const { state, dispatch, undoStackSize } = usePDF();
+  const prevToolRef = useRef(state.toolMode);
+
+  const handleToolChange = useCallback((mode: ToolMode) => {
+    if (mode !== prevToolRef.current) {
+      // フラッシュエフェクト
+      const flash = document.createElement('div');
+      flash.className = 'dq-tool-flash-overlay';
+      document.body.appendChild(flash);
+      flash.addEventListener('animationend', () => flash.remove());
+      prevToolRef.current = mode;
+    }
+    dispatch({ type: 'SET_TOOL', payload: mode });
+  }, [dispatch]);
 
   return (
     <div
@@ -110,7 +136,7 @@ export default function DqToolbar() {
           return (
             <button
               key={mode}
-              onClick={() => dispatch({ type: 'SET_TOOL', payload: mode })}
+              onClick={() => handleToolChange(mode)}
               aria-label={label}
               aria-pressed={active}
               className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 ${
@@ -158,4 +184,6 @@ export default function DqToolbar() {
       </div>
     </div>
   );
-}
+});
+
+export default DqToolbar;

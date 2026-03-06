@@ -59,7 +59,7 @@ export default function SlidePanel({ isOpen, onClose, title, children }: SlidePa
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-h-[70vh] dq-window rounded-t-md rounded-b-none transition-transform duration-300 ease-out ynk-dungeon-wall"
+        className="relative w-full max-h-[70vh] dq-window rounded-t-md rounded-b-none dq-panel-smooth ynk-dungeon-wall"
         style={{
           transform: `translateY(${translateY}%)`,
           background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',

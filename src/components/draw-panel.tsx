@@ -265,6 +265,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
                     onClick={() => setStrokeColor(c)}
                     className={`dq-color-btn w-10 h-10 ${strokeColor === c ? 'active' : ''}`}
                     style={{ backgroundColor: c, borderColor: strokeColor === c ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
+                    title={c}
                   />
                 ))}
               </div>

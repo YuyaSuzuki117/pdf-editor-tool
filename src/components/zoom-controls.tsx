@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 
 const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
 
-export default function ZoomControls() {
+const ZoomControls = React.memo(function ZoomControls() {
   const { state, dispatch } = usePDF();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -135,4 +135,6 @@ export default function ZoomControls() {
       </div>
     </div>
   );
-}
+});
+
+export default ZoomControls;

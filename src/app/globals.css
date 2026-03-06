@@ -467,6 +467,110 @@ body {
 }
 
 /* ===== ダンジョン壁テクスチャ（スライドパネル用） ===== */
+/* ===== ツール切り替えフラッシュ ===== */
+@keyframes dq-tool-flash {
+  0% { opacity: 0; }
+  50% { opacity: 0.1; }
+  100% { opacity: 0; }
+}
+
+.dq-tool-flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--ynk-gold);
+  pointer-events: none;
+  z-index: 9999;
+  animation: dq-tool-flash 0.25s ease-out forwards;
+}
+
+/* ===== ボタンホバーグロー ===== */
+.dq-btn:hover:not(:disabled) {
+  box-shadow:
+    4px 0 0 0 #6a4a08,
+    0 4px 0 0 #6a4a08,
+    4px 4px 0 0 #6a4a08,
+    -2px 0 0 0 #e8c040,
+    0 -2px 0 0 #e8c040,
+    -2px -2px 0 0 #e8c040,
+    -4px 0 0 0 #1a1008,
+    4px 0 0 0 #1a1008,
+    0 -4px 0 0 #1a1008,
+    0 6px 0 0 #1a1008,
+    6px 0 0 0 #1a1008,
+    6px 6px 0 0 #1a1008,
+    -4px -4px 0 0 #1a1008,
+    2px 8px 12px rgba(0,0,0,0.5),
+    0 0 12px rgba(212,160,23,0.3);
+}
+
+.dq-btn-small:hover:not(:disabled) {
+  box-shadow:
+    2px 0 0 0 #6a4a08,
+    0 2px 0 0 #6a4a08,
+    2px 2px 0 0 #6a4a08,
+    -1px 0 0 0 #e8c040,
+    0 -1px 0 0 #e8c040,
+    -1px -1px 0 0 #e8c040,
+    1px 4px 6px rgba(0,0,0,0.4),
+    0 0 10px rgba(212,160,23,0.3);
+}
+
+/* ===== スムーズパネルトランジション ===== */
+.dq-panel-smooth {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ===== 統一スピナー ===== */
+.dq-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--ynk-dirt);
+  border-top-color: var(--ynk-gold);
+  border-radius: 50%;
+  animation: dq-spin 0.8s linear infinite;
+}
+.dq-spinner-sm {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ynk-dirt);
+  border-top-color: var(--ynk-gold);
+  border-radius: 50%;
+  animation: dq-spin 0.8s linear infinite;
+}
+@keyframes dq-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== ページ遷移フェード ===== */
+.dq-page-fade {
+  transition: opacity 0.25s ease-in-out;
+}
+
+/* ===== 色選択チェックマーク ===== */
+.dq-color-btn.active {
+  border-color: #d4a017 !important;
+  box-shadow: 0 0 8px rgba(212,160,23,0.5), 0 0 16px rgba(212,160,23,0.2);
+  position: relative;
+}
+
+.dq-color-btn.active::after {
+  content: '\2713';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
+}
+
+/* ===== トーストタイプ別ボーダー ===== */
+.dq-toast-success { }
+.dq-toast-error { }
+.dq-toast-info { }
+
 .ynk-dungeon-wall {
   background-image:
     repeating-linear-gradient(

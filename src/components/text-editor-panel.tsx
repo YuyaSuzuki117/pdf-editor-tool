@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
+import { showDqToast } from '@/lib/toast';
 import SlidePanel from './slide-panel';
-import type { Annotation } from '@/types/pdf';
+import type { Annotation, TextStyle } from '@/types/pdf';
 
 const fontSizes = [12, 16, 20, 24, 32];
 const fontFamilies = [
@@ -18,18 +19,6 @@ const colors = [
   { label: '白', value: '#ffffff' },
 ];
 
-function showDqToast(message: string) {
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100;background:linear-gradient(180deg,#3d2a1e,#2a1c12);border:3px solid #7a5540;outline:3px solid #2a1c12;border-radius:4px;color:#d4a017;padding:12px 24px;font-family:DotGothic16,monospace;font-weight:bold;text-shadow:2px 2px 0 rgba(0,0,0,0.8);box-shadow:0 4px 20px rgba(0,0,0,0.7);animation:ynk-dig-appear 0.3s ease;image-rendering:pixelated;';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(() => toast.remove(), 300);
-  }, 2500);
-}
-
 export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [text, setText] = useState('');
@@ -38,6 +27,8 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
   const [color, setColor] = useState('#000000');
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);
   const [tapRenderScale, setTapRenderScale] = useState(1);
+  // 再編集モード用
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -49,36 +40,102 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
     return () => window.removeEventListener('pdf-tap', handler);
   }, []);
 
-  // パネルを閉じたらタップ位置をリセット
+  // edit-annotationイベントをリッスン
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { annotation } = (e as CustomEvent).detail as { annotation: Annotation };
+      if (annotation.type !== 'text') return;
+      const style = annotation.style as TextStyle;
+      setText(annotation.content);
+      setFontSize(style.fontSize);
+      setColor(style.color);
+      setFontFamily(style.fontFamily || 'Noto Sans JP');
+      setTapPos(annotation.position);
+      setTapRenderScale(annotation.renderScale || 1);
+      setEditingId(annotation.id);
+      // textモードに切り替えてパネルを開く
+      dispatch({ type: 'SET_TOOL', payload: 'text' });
+    };
+    window.addEventListener('edit-annotation', handler);
+    return () => window.removeEventListener('edit-annotation', handler);
+  }, [dispatch]);
+
+  // パネルを閉じたらリセット
   useEffect(() => {
     if (!isOpen) {
       setTapPos(null);
+      setEditingId(null);
     }
   }, [isOpen]);
 
   const handleAdd = useCallback(() => {
     if (!text.trim() || !tapPos) return;
-    const annotation: Annotation = {
-      id: crypto.randomUUID(),
-      type: 'text',
-      page: state.currentPage,
-      position: tapPos,
-      content: text,
-      style: { fontSize, color, fontFamily },
-      renderScale: tapRenderScale,
-      createdAt: Date.now(),
-    };
-    dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
-    showDqToast('テキストを追加しました！');
-    // パネルを閉じず、テキストだけリセットして連続追加可能に
-    setText('');
-    setTapPos(null);
-  }, [text, tapPos, fontSize, fontFamily, color, tapRenderScale, state.currentPage, dispatch]);
+    if (editingId) {
+      // 再編集モード: UPDATE_ANNOTATION
+      dispatch({
+        type: 'UPDATE_ANNOTATION',
+        payload: {
+          id: editingId,
+          updates: {
+            content: text,
+            position: tapPos,
+            style: { fontSize, color, fontFamily },
+            renderScale: tapRenderScale,
+          },
+        },
+      });
+      showDqToast('テキストを更新しました！', 'success');
+      setText('');
+      setTapPos(null);
+      setEditingId(null);
+    } else {
+      // 新規追加モード
+      const annotation: Annotation = {
+        id: crypto.randomUUID(),
+        type: 'text',
+        page: state.currentPage,
+        position: tapPos,
+        content: text,
+        style: { fontSize, color, fontFamily },
+        renderScale: tapRenderScale,
+        createdAt: Date.now(),
+      };
+      dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
+      showDqToast('テキストを追加しました！', 'success');
+      // パネルを閉じず、テキストだけリセットして連続追加可能に
+      setText('');
+      setTapPos(null);
+    }
+  }, [text, tapPos, fontSize, fontFamily, color, tapRenderScale, state.currentPage, dispatch, editingId]);
+
+  const handleCancel = useCallback(() => {
+    if (editingId) {
+      setText('');
+      setTapPos(null);
+      setEditingId(null);
+    }
+    onClose();
+  }, [editingId, onClose]);
 
   return (
-    <SlidePanel isOpen={isOpen} onClose={onClose} title="テキスト追加">
+    <SlidePanel isOpen={isOpen} onClose={handleCancel} title={editingId ? 'テキスト編集' : 'テキスト追加'}>
       <div className="space-y-4">
-        {!tapPos && (
+        {editingId && (
+          <div
+            className="dq-message-box"
+            style={{
+              background: 'rgba(234,179,8,0.15)',
+              border: '2px solid #eab308',
+              borderRadius: 4,
+              padding: '12px 16px',
+            }}
+          >
+            <p className="dq-text text-sm font-bold" style={{ color: '#fde047' }}>
+              編集モード: テキストを修正して確定してください
+            </p>
+          </div>
+        )}
+        {!tapPos && !editingId && (
           <div
             className="dq-message-box"
             style={{
@@ -179,10 +236,23 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
           disabled={!text.trim() || !tapPos}
           className="dq-btn w-full"
         >
-          追加する（続けて追加可能）
+          {editingId ? '更新する' : '追加する（続けて追加可能）'}
         </button>
+        {editingId && (
+          <button
+            onClick={() => {
+              setText('');
+              setTapPos(null);
+              setEditingId(null);
+            }}
+            className="dq-btn w-full"
+            style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
+          >
+            編集をキャンセル
+          </button>
+        )}
         <button
-          onClick={onClose}
+          onClick={handleCancel}
           className="dq-btn w-full"
           style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
         >

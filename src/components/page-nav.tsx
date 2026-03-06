@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 
-export default function PageNav() {
+const PageNav = React.memo(function PageNav() {
   const { state, dispatch } = usePDF();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -136,4 +136,6 @@ export default function PageNav() {
       </button>
     </div>
   );
-}
+});
+
+export default PageNav;

@@ -3,33 +3,24 @@
 import { useState, useCallback, useEffect } from 'react';
 import { FileDown, Image } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
+import { showDqToast } from '@/lib/toast';
 import {
   addTextToPdf,
   addDrawingToPdf,
   addHighlightToPdf,
+  addImageToPdf,
   savePdfAsBlob,
   downloadBlob,
 } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
+import { DqSlime } from '@/components/dq-slime';
 import type { TextStyle, DrawStyle, HighlightStyle } from '@/types/pdf';
-
-function showDqToast(message: string) {
-  const toast = document.createElement('div');
-  toast.className = 'dq-toast';
-  toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100;background:linear-gradient(180deg,#3d2a1e,#2a1c12);border:3px solid #7a5540;outline:3px solid #2a1c12;border-radius:4px;color:#d4a017;padding:12px 24px;font-family:DotGothic16,monospace;font-weight:bold;text-shadow:2px 2px 0 rgba(0,0,0,0.8);box-shadow:0 4px 20px rgba(0,0,0,0.7);animation:ynk-dig-appear 0.3s ease;image-rendering:pixelated;';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(() => toast.remove(), 300);
-  }, 2500);
-}
 
 export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [filename, setFilename] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState(0);
 
   // パネルを開いた時に既存ファイル名を自動入力
   useEffect(() => {
@@ -47,10 +38,21 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const applyAnnotations = useCallback(async (): Promise<Uint8Array> => {
     if (!state.pdfData) throw new Error('PDFデータがありません');
     let currentData: ArrayBuffer = state.pdfData.slice(0);
+    const total = state.annotations.length;
 
-    for (const ann of state.annotations) {
+    for (let idx = 0; idx < total; idx++) {
+      const ann = state.annotations[idx];
       const pageIndex = ann.page - 1;
       const scale = ann.renderScale || 1;
+
+      // チャンク分割: 5件ごとにUIスレッドに制御を返す（フリーズ防止）
+      if (idx > 0 && idx % 5 === 0) {
+        await new Promise<void>((r) => setTimeout(r, 0));
+      }
+
+      // 実際の処理数に基づくプログレス計算
+      setSaveProgress(Math.round(((idx + 1) / total) * 90));
+
       switch (ann.type) {
         case 'text': {
           const style = ann.style as TextStyle;
@@ -112,24 +114,55 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           currentData = result.buffer as ArrayBuffer;
           break;
         }
+        case 'image': {
+          const imgStyle = ann.style as Record<string, string | number>;
+          const pdfPos = {
+            x: ann.position.x / scale,
+            y: ann.position.y / scale,
+          };
+          const pdfSize = {
+            width: ((imgStyle.width as number) || 150) / scale,
+            height: ((imgStyle.height as number) || 150) / scale,
+          };
+          // DataURLからバイナリに変換
+          const dataUrl = ann.content;
+          const base64 = dataUrl.split(',')[1];
+          const binaryStr = atob(base64);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          const result = await addImageToPdf(
+            currentData,
+            pageIndex,
+            bytes,
+            pdfPos,
+            pdfSize
+          );
+          currentData = result.buffer as ArrayBuffer;
+          break;
+        }
       }
     }
+    setSaveProgress(100);
     return new Uint8Array(currentData);
   }, [state.pdfData, state.annotations]);
 
   const handleSavePDF = async () => {
     setSaving(true);
+    setSaveProgress(0);
     try {
       const pdfBytes = await applyAnnotations();
       const blob = savePdfAsBlob(pdfBytes);
       downloadBlob(blob, getFilename());
       dispatch({ type: 'SET_MODIFIED', payload: false });
-      showDqToast('PDFを保存しました！');
+      showDqToast('PDFを保存しました！', 'success');
       onClose();
     } catch (err) {
-      alert('保存に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+      showDqToast('保存に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'), 'error');
     } finally {
       setSaving(false);
+      setSaveProgress(0);
     }
   };
 
@@ -204,6 +237,26 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             ctx.fillText(lines[i], x, y + i * scaledSize * scaleRatio * 1.2);
           }
           ctx.restore();
+        } else if (ann.type === 'image') {
+          const imgStyle = ann.style as Record<string, string | number>;
+          const imgWidth = (imgStyle.width as number) || 150;
+          const imgHeight = (imgStyle.height as number) || 150;
+          const scaleRatio = canvas.width / canvas.offsetWidth;
+          await new Promise<void>((resolve) => {
+            const img = new window.Image();
+            img.onload = () => {
+              ctx.drawImage(
+                img,
+                ann.position.x * scaleRatio,
+                ann.position.y * scaleRatio,
+                imgWidth * scaleRatio,
+                imgHeight * scaleRatio
+              );
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = ann.content;
+          });
         }
       }
 
@@ -212,7 +265,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       a.href = dataURL;
       a.download = `${filename.trim() || 'page'}_${state.currentPage}.png`;
       a.click();
-      showDqToast('画像を保存しました！');
+      showDqToast('画像を保存しました！', 'success');
       onClose();
     } finally {
       setSaving(false);
@@ -240,8 +293,10 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             </p>
           </div>
         ) : (
-          <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '12px 16px' }}>
-            <p className="dq-text text-sm opacity-60">編集内容がありません</p>
+          <div className="flex flex-col items-center py-3" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '16px' }}>
+            <DqSlime size={48} bounce={true}>
+              <span style={{ fontSize: 12 }}>{'\u307E\u3060\u306A\u306B\u3082 \u307B\u308A\u3060\u3057\u3066\u3044\u306A\u3044\u305E'}</span>
+            </DqSlime>
           </div>
         )}
         {state.isModified && (
@@ -260,9 +315,18 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
         </div>
         {saving && (
           <div>
-            <p className="dq-text text-xs mb-1" style={{ color: 'var(--ynk-gold)' }}>保存中...</p>
+            <div className="flex justify-between mb-1">
+              <p className="dq-text text-xs" style={{ color: 'var(--ynk-gold)' }}>保存中...</p>
+              {state.annotations.length > 0 && (
+                <p className="dq-text text-xs" style={{ color: 'var(--ynk-gold)' }}>{saveProgress}%</p>
+              )}
+            </div>
             <div className="dq-progress" style={{ height: 8, background: 'rgba(0,0,0,0.4)', borderRadius: 4, border: '1px solid rgba(136,136,204,0.3)', overflow: 'hidden' }}>
-              <div className="dq-progress-bar dq-progress-hp" style={{ width: '100%', animation: 'dq-hp-pulse 1s ease-in-out infinite alternate' }} />
+              <div className="dq-progress-bar dq-progress-hp" style={{
+                width: state.annotations.length > 0 ? `${saveProgress}%` : '100%',
+                transition: 'width 0.2s ease',
+                animation: saveProgress >= 100 || state.annotations.length === 0 ? 'dq-hp-pulse 1s ease-in-out infinite alternate' : 'none',
+              }} />
             </div>
           </div>
         )}
@@ -272,7 +336,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           className="dq-btn w-full flex items-center justify-center gap-2"
         >
           {saving ? (
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <div className="dq-spinner-sm" />
           ) : (
             <FileDown size={20} />
           )}

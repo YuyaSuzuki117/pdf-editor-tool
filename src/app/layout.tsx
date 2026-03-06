@@ -40,6 +40,11 @@ export default function RootLayout({
       </head>
       <body className="antialiased font-['DotGothic16','Noto_Sans_JP',monospace]">
         {children}
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+          }
+        `}} />
       </body>
     </html>
   );

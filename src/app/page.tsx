@@ -12,7 +12,10 @@ import DrawPanel from '@/components/draw-panel';
 import HighlightPanel from '@/components/highlight-panel';
 import PageManager from '@/components/page-manager';
 import SavePanel from '@/components/save-panel';
+import StampPanel from '@/components/stamp-panel';
 import AnnotationList from '@/components/annotation-list';
+import Onboarding from '@/components/onboarding';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 function PDFApp() {
   const { state, dispatch } = usePDF();
@@ -50,9 +53,11 @@ function PDFApp() {
       <TextEditorPanel isOpen={state.toolMode === 'text'} onClose={closePanel} />
       <DrawPanel isOpen={state.toolMode === 'draw'} onClose={closePanel} />
       <HighlightPanel isOpen={state.toolMode === 'highlight'} onClose={closePanel} />
+      <StampPanel isOpen={state.toolMode === 'image'} onClose={closePanel} />
       <PageManager isOpen={state.toolMode === 'pages'} onClose={closePanel} />
       <SavePanel isOpen={state.toolMode === 'save'} onClose={closePanel} />
       <AnnotationList />
+      <Onboarding />
     </div>
   );
 }
@@ -60,7 +65,9 @@ function PDFApp() {
 export default function Home() {
   return (
     <PDFProvider>
-      <PDFApp />
+      <ErrorBoundary>
+        <PDFApp />
+      </ErrorBoundary>
     </PDFProvider>
   );
 }

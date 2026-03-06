@@ -14,13 +14,127 @@ const AnnotationItem = React.memo(function AnnotationItem({
   toolMode,
   parsedPoints,
   onDelete,
+  onUpdate,
 }: {
   ann: Annotation;
   fitScale: number;
   toolMode: string;
   parsedPoints?: { x: number; y: number }[];
   onDelete: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<Annotation>) => void;
 }) {
+  const [dragState, setDragState] = useState({
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const dragDistRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const offsetRef = useRef({ x: 0, y: 0 });
+
+  const startDrag = useCallback((clientX: number, clientY: number) => {
+    if (toolMode !== 'view') return;
+    dragDistRef.current = 0;
+    isDraggingRef.current = false;
+    setDragState({
+      dragging: true,
+      startX: clientX,
+      startY: clientY,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }, [toolMode]);
+
+  useEffect(() => {
+    if (!dragState.dragging) return;
+
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - dragState.startX;
+      const dy = clientY - dragState.startY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      dragDistRef.current = dist;
+      if (dist >= 5) {
+        isDraggingRef.current = true;
+      }
+      offsetRef.current = { x: dx, y: dy };
+      setDragState((prev) => ({ ...prev, offsetX: dx, offsetY: dy }));
+    };
+
+    const onEnd = () => {
+      if (isDraggingRef.current) {
+        const finalX = offsetRef.current.x;
+        const finalY = offsetRef.current.y;
+        if (ann.type === 'draw') {
+          // drawアノテーションはcontent内の座標を全てオフセット
+          const newContent = ann.content.replace(
+            /([ML])([\d.]+),([\d.]+)/g,
+            (_match, cmd, xStr, yStr) => {
+              const nx = parseFloat(xStr) + finalX;
+              const ny = parseFloat(yStr) + finalY;
+              return `${cmd}${nx},${ny}`;
+            }
+          );
+          onUpdate(ann.id, { content: newContent });
+        } else {
+          onUpdate(ann.id, {
+            position: {
+              x: ann.position.x + finalX,
+              y: ann.position.y + finalY,
+            },
+          });
+        }
+      }
+      offsetRef.current = { x: 0, y: 0 };
+      setDragState({ dragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0 });
+      isDraggingRef.current = false;
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+    };
+    // dragState.offsetXとoffsetYは依存に含めない（onEnd内ではstale closureだが、
+    // onUpdateはposition計算のため最新のoffsetを使う必要がある）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragState.dragging, dragState.startX, dragState.startY, ann.id, ann.position.x, ann.position.y, onUpdate]);
+
+  // ダブルクリック/ダブルタップで再編集
+  const handleDoubleClick = useCallback(() => {
+    if (toolMode !== 'view') return;
+    if (ann.type !== 'text') return;
+    window.dispatchEvent(new CustomEvent('edit-annotation', { detail: { annotation: ann } }));
+  }, [toolMode, ann]);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (toolMode !== 'view') return;
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  }, [toolMode, startDrag]);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (toolMode !== 'view') return;
+    if (e.touches.length !== 1) return;
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+  }, [toolMode, startDrag]);
+
+  const draggingStyle: React.CSSProperties = isDraggingRef.current && dragState.dragging
+    ? { opacity: 0.7, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 50 }
+    : {};
+
+  const dragTransform = dragState.dragging
+    ? `translate(${dragState.offsetX}px, ${dragState.offsetY}px)`
+    : undefined;
+
   if (ann.type === 'text') {
     const style = ann.style as TextStyle;
     return (
@@ -35,12 +149,25 @@ const AnnotationItem = React.memo(function AnnotationItem({
           lineHeight: 1.2,
           whiteSpace: 'pre-wrap',
           textShadow: '0 0 2px rgba(255,255,255,0.5)',
+          cursor: toolMode === 'view' ? 'grab' : undefined,
+          userSelect: 'none',
+          transform: dragTransform,
+          transition: dragState.dragging ? 'none' : 'transform 0.1s',
+          ...draggingStyle,
         }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+        onDoubleClick={handleDoubleClick}
       >
         {ann.content}
         {toolMode === 'view' && (
           <button
-            onClick={() => onDelete(ann.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (dragDistRef.current < 5) onDelete(ann.id);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="absolute -top-2 -right-4 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
           >
@@ -74,7 +201,14 @@ const AnnotationItem = React.memo(function AnnotationItem({
           top: minY - pad,
           width: svgWidth,
           height: svgHeight,
+          cursor: toolMode === 'view' ? 'grab' : undefined,
+          userSelect: 'none',
+          transform: dragTransform,
+          transition: dragState.dragging ? 'none' : 'transform 0.1s',
+          ...draggingStyle,
         }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
       >
         <svg width={svgWidth} height={svgHeight} style={{ overflow: 'visible' }}>
           <path
@@ -88,7 +222,12 @@ const AnnotationItem = React.memo(function AnnotationItem({
         </svg>
         {toolMode === 'view' && (
           <button
-            onClick={() => onDelete(ann.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (dragDistRef.current < 5) onDelete(ann.id);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
           >
@@ -109,15 +248,71 @@ const AnnotationItem = React.memo(function AnnotationItem({
           width: style.width,
           height: style.height,
           backgroundColor: style.color,
-          opacity: style.opacity,
+          opacity: dragState.dragging && isDraggingRef.current ? 0.7 * style.opacity : style.opacity,
           borderRadius: 2,
+          cursor: toolMode === 'view' ? 'grab' : undefined,
+          userSelect: 'none',
+          transform: dragTransform,
+          transition: dragState.dragging ? 'none' : 'transform 0.1s',
+          ...(isDraggingRef.current && dragState.dragging ? { boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 50 } : {}),
         }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
       >
         {toolMode === 'view' && (
           <button
-            onClick={() => onDelete(ann.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (dragDistRef.current < 5) onDelete(ann.id);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto', opacity: 1 }}
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+    );
+  }
+  if (ann.type === 'image') {
+    const style = ann.style as Record<string, string | number>;
+    const imgWidth = (style.width as number) || 150;
+    const imgHeight = (style.height as number) || 150;
+    return (
+      <div
+        className="absolute pointer-events-auto group"
+        style={{
+          left: ann.position.x,
+          top: ann.position.y,
+          width: imgWidth,
+          height: imgHeight,
+          cursor: toolMode === 'view' ? 'grab' : undefined,
+          userSelect: 'none',
+          transform: dragTransform,
+          transition: dragState.dragging ? 'none' : 'transform 0.1s',
+          ...draggingStyle,
+        }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={ann.content}
+          alt="annotation"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+        />
+        {toolMode === 'view' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (dragDistRef.current < 5) onDelete(ann.id);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
           >
             <X size={12} />
           </button>
@@ -138,12 +333,15 @@ export default function PDFViewer() {
   const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [fitScale, setFitScale] = useState(1);
   const [textCursor, setTextCursor] = useState<{ x: number; y: number } | null>(null);
+  const [pageOpacity, setPageOpacity] = useState(1);
+  const prevPageRef = useRef(state.currentPage);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const pinchStartDist = useRef(0);
   const pinchStartScale = useRef(1);
   const labelTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastTapTime = useRef(0);
+  const renderTaskRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showPageLabel = useCallback(() => {
     setPageLabel(`${state.currentPage} / ${state.numPages}`);
@@ -151,17 +349,24 @@ export default function PDFViewer() {
     labelTimer.current = setTimeout(() => setPageLabel(''), 2000);
   }, [state.currentPage, state.numPages]);
 
-  // PDF読み込み
+  // PDF読み込み（前のドキュメントを破棄してメモリ解放）
   useEffect(() => {
     if (!state.pdfData) return;
     let cancelled = false;
     setDocReady(false);
     (async () => {
       try {
+        // 前のドキュメントを破棄
+        if (docRef.current) {
+          docRef.current.destroy();
+          docRef.current = null;
+        }
         const doc = await loadDocumentFromBytes(state.pdfData!);
         if (!cancelled) {
           docRef.current = doc;
           setDocReady(true);
+        } else {
+          doc.destroy();
         }
       } catch (err) {
         console.error('PDF load error:', err);
@@ -170,32 +375,78 @@ export default function PDFViewer() {
     return () => { cancelled = true; };
   }, [state.pdfData]);
 
-  // ページ描画
+  // unmount時にPDFドキュメントとcanvasを解放
+  useEffect(() => {
+    return () => {
+      if (docRef.current) {
+        docRef.current.destroy();
+        docRef.current = null;
+      }
+      // canvasのメモリ解放
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    };
+  }, []);
+
+  // ページ描画（debounce付き: 連続ページ送りでレンダリングが重ならないように）
   useEffect(() => {
     if (!docReady || !docRef.current || !canvasRef.current || !containerRef.current) return;
     let cancelled = false;
-    (async () => {
+
+    // ページが変わった場合はフェードアウト開始
+    const pageChanged = prevPageRef.current !== state.currentPage;
+    if (pageChanged) {
+      setPageOpacity(0);
+      prevPageRef.current = state.currentPage;
+    }
+
+    // 前のレンダリング予約をキャンセル
+    if (renderTaskRef.current) {
+      clearTimeout(renderTaskRef.current);
+    }
+
+    renderTaskRef.current = setTimeout(async () => {
       try {
-        const doc = docRef.current!;
+        if (cancelled || !docRef.current || !canvasRef.current || !containerRef.current) return;
+        const doc = docRef.current;
         const page = await doc.getPage(state.currentPage);
+        if (cancelled) return;
         const viewport = page.getViewport({ scale: 1 });
         const containerWidth = containerRef.current!.clientWidth;
         const computedFitScale = (containerWidth / viewport.width) * state.scale;
         if (!cancelled && canvasRef.current) {
           await renderPage(doc, state.currentPage, canvasRef.current, computedFitScale);
+          if (cancelled) return;
           const scaledViewport = page.getViewport({ scale: computedFitScale });
           setCanvasSize({
             width: Math.floor(scaledViewport.width),
             height: Math.floor(scaledViewport.height),
           });
           setFitScale(computedFitScale);
+          // レンダリング完了後にフェードイン
+          requestAnimationFrame(() => {
+            if (!cancelled) setPageOpacity(1);
+          });
         }
       } catch (err) {
-        console.error('Page render error:', err);
+        if (!cancelled) console.error('Page render error:', err);
       }
-    })();
+    }, 50);
+
     showPageLabel();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (renderTaskRef.current) {
+        clearTimeout(renderTaskRef.current);
+      }
+    };
   }, [docReady, state.currentPage, state.scale, showPageLabel]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -227,7 +478,7 @@ export default function PDFViewer() {
       pinchStartDist.current = 0;
       return;
     }
-    if (state.toolMode === 'text') {
+    if (state.toolMode === 'text' || state.toolMode === 'image') {
       // テキストモードではタッチもタップとして処理
       const dx = e.changedTouches[0].clientX - touchStartX.current;
       const dy = e.changedTouches[0].clientY - touchStartY.current;
@@ -238,7 +489,7 @@ export default function PDFViewer() {
         const rect = canvas.getBoundingClientRect();
         const x = e.changedTouches[0].clientX - rect.left;
         const y = e.changedTouches[0].clientY - rect.top;
-        setTextCursor({ x, y });
+        if (state.toolMode === 'text') { setTextCursor({ x, y }); }
         window.dispatchEvent(
           new CustomEvent('pdf-tap', { detail: { x, y, page: state.currentPage, renderScale: fitScale } })
         );
@@ -272,7 +523,7 @@ export default function PDFViewer() {
   };
 
   const handleTap = useCallback((e: React.MouseEvent) => {
-    if (state.toolMode === 'text') {
+    if (state.toolMode === 'text' || state.toolMode === 'image') {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -287,6 +538,10 @@ export default function PDFViewer() {
 
   const handleDeleteAnnotation = useCallback((id: string) => {
     dispatch({ type: 'REMOVE_ANNOTATION', payload: id });
+  }, [dispatch]);
+
+  const handleUpdateAnnotation = useCallback((id: string, updates: Partial<Annotation>) => {
+    dispatch({ type: 'UPDATE_ANNOTATION', payload: { id, updates } });
   }, [dispatch]);
 
   // テキストモード以外のときカーソルをリセット
@@ -332,7 +587,7 @@ export default function PDFViewer() {
     >
       {!docReady && state.pdfData && (
         <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+          <div className="dq-spinner" />
         </div>
       )}
       <div className="relative my-4" style={{ width: canvasSize.width || 'auto', height: canvasSize.height || 'auto' }}>
@@ -340,8 +595,8 @@ export default function PDFViewer() {
           ref={canvasRef}
           role="img"
           aria-label={`PDFページ ${state.currentPage} / ${state.numPages}`}
-          className="shadow-lg block"
-          style={{ cursor: state.toolMode === 'text' ? 'crosshair' : undefined }}
+          className="shadow-lg block dq-page-fade"
+          style={{ cursor: (state.toolMode === 'text' || state.toolMode === 'image') ? 'crosshair' : undefined, opacity: pageOpacity }}
           data-render-scale={fitScale}
           onClick={handleTap}
         />
@@ -359,6 +614,7 @@ export default function PDFViewer() {
                 toolMode={state.toolMode}
                 parsedPoints={parsedPaths.get(ann.id)}
                 onDelete={handleDeleteAnnotation}
+                onUpdate={handleUpdateAnnotation}
               />
             ))}
             {/* テキストモード時のカーソルインジケーター */}

@@ -41,6 +41,9 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
         }, 0);
       });
     }
+
+    // サムネイル生成完了後にPDFドキュメントを解放
+    doc.destroy();
   }, [state.pdfData]);
 
   useEffect(() => {
@@ -82,9 +85,11 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
       const newBuffer = await file.arrayBuffer();
       const merged = await mergePdfs([state.pdfData, newBuffer]);
       const doc = await loadDocumentFromBytes(merged.buffer as ArrayBuffer);
+      const numPages = doc.numPages;
+      doc.destroy(); // ページ数取得後に即解放
       dispatch({
         type: 'UPDATE_PDF_DATA',
-        payload: { pdfData: merged.buffer as ArrayBuffer, numPages: doc.numPages },
+        payload: { pdfData: merged.buffer as ArrayBuffer, numPages },
       });
       generateThumbnails();
     };
@@ -117,7 +122,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="w-8 h-8 border-2 border-[var(--ynk-gold)] border-t-transparent rounded-full animate-spin" />
+            <div className="dq-spinner" />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
@@ -143,7 +148,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     <img src={thumb.dataURL} alt={`ページ ${thumb.index + 1}`} className="w-full" />
                   ) : (
                     <div className="w-full aspect-[3/4] flex items-center justify-center" style={{ background: '#2a1e12' }}>
-                      <div className="w-6 h-6 border-2 border-[var(--ynk-gold)] border-t-transparent rounded-full animate-spin" />
+                      <div className="dq-spinner-sm" />
                     </div>
                   )}
                 </div>

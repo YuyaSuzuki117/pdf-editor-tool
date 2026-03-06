@@ -21,6 +21,7 @@ export default function DqDropZone() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [fileSize, setFileSize] = useState('');
+  const [largeFileWarning, setLargeFileWarning] = useState(false);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -40,23 +41,39 @@ export default function DqDropZone() {
         return;
       }
 
+      // 50MB以上は警告表示（読み込みは続行）
+      setLargeFileWarning(file.size > 50 * 1024 * 1024);
+
       setFileSize(formatFileSize(file.size));
       setPhase('loading');
       setProgress(0);
 
-      // 疑似プログレス
-      const timer = setInterval(() => {
-        setProgress((p) => Math.min(p + Math.random() * 15, 90));
-      }, 200);
-
       dispatch({ type: 'SET_LOADING', payload: true });
 
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        setProgress(70);
+        // FileReaderのprogressイベントで正確な読み込み進捗を表示
+        const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onprogress = (e) => {
+            if (e.lengthComputable) {
+              // 読み込みフェーズ: 0-60%
+              setProgress(Math.round((e.loaded / e.total) * 60));
+            }
+          };
+          reader.onload = () => {
+            if (reader.result instanceof ArrayBuffer) {
+              resolve(reader.result);
+            } else {
+              reject(new Error('FileReader result is not ArrayBuffer'));
+            }
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(file);
+        });
+
+        setProgress(65);
         const doc = await loadDocumentFromBytes(arrayBuffer);
         setProgress(100);
-        clearInterval(timer);
 
         // 少し待ってから表示（演出）
         await new Promise((r) => setTimeout(r, 400));
@@ -65,8 +82,8 @@ export default function DqDropZone() {
           type: 'LOAD_PDF',
           payload: { file, pdfData: arrayBuffer, numPages: doc.numPages },
         });
+        setLargeFileWarning(false);
       } catch (err) {
-        clearInterval(timer);
         const message = err instanceof Error ? err.message : '';
         let userMsg = 'くっ...！ PDFが こわれているようだ！';
         if (message.includes('password') || message.includes('encrypt')) {
@@ -78,6 +95,7 @@ export default function DqDropZone() {
         }
         setPhase('error');
         setErrorMsg(userMsg);
+        setLargeFileWarning(false);
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     },
@@ -181,6 +199,18 @@ export default function DqDropZone() {
             <DqSlime size={80} bounce>
               ダンジョンを くっさく ちゅう...
             </DqSlime>
+
+            {/* 50MB超え警告 */}
+            {largeFileWarning && (
+              <div className="w-full max-w-[240px] text-center" style={{ color: '#e8a000' }}>
+                <p className="dq-text text-xs">
+                  おおきな ダンジョンだ！ ({fileSize})
+                </p>
+                <p className="dq-text text-xs opacity-70">
+                  よみこみに じかんが かかるかもしれません
+                </p>
+              </div>
+            )}
 
             {/* 掘削ゲージ */}
             <div className="w-full max-w-[240px]">
