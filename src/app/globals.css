@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700&display=swap');
+/* フォントはlayout.tsxの<link>タグで読み込み済み（CSS @importはレンダリングブロックのため削除） */
 @import "tailwindcss";
 
 :root {
