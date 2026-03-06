@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 
 const PageNav = React.memo(function PageNav() {
@@ -19,30 +19,6 @@ const PageNav = React.memo(function PageNav() {
 
   const prev = useCallback(() => goTo(state.currentPage - 1), [goTo, state.currentPage]);
   const next = useCallback(() => goTo(state.currentPage + 1), [goTo, state.currentPage]);
-
-  // キーボードショートカット: ←→キーでページ移動（viewモード時のみ）
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // 入力フィールドにフォーカスがある場合は無視
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      if (state.toolMode !== 'view') return;
-
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        if (state.currentPage > 1) {
-          dispatch({ type: 'SET_PAGE', payload: state.currentPage - 1 });
-        }
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        if (state.currentPage < state.numPages) {
-          dispatch({ type: 'SET_PAGE', payload: state.currentPage + 1 });
-        }
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [state.toolMode, state.currentPage, state.numPages, dispatch]);
 
   const startEdit = useCallback(() => {
     setInputValue(String(state.currentPage));

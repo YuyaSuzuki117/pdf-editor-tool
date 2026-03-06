@@ -6,6 +6,7 @@ import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
 import { YuunamaGoblin } from '@/components/dq-characters';
 import PageNav from '@/components/page-nav';
+import { dqConfirm } from '@/components/dq-confirm';
 
 export default function DqHeader() {
   const { state, dispatch } = usePDF();
@@ -17,7 +18,7 @@ export default function DqHeader() {
       if (file.type !== 'application/pdf') return;
       // 未保存変更がある場合は確認
       if (state.isModified) {
-        if (!confirm('未保存の変更があります。新しいPDFを開きますか？')) return;
+        if (!(await dqConfirm('未保存の変更があります。\n新しいPDFを開きますか？'))) return;
       }
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
