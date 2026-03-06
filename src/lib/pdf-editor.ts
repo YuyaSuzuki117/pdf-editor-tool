@@ -147,6 +147,18 @@ export async function mergePdfs(
   return merged.save();
 }
 
+export async function reorderPages(
+  pdfBytes: ArrayBuffer,
+  newOrder: number[]
+): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
+  const srcDoc = await PDFDocument.load(pdfBytes);
+  const newDoc = await PDFDocument.create();
+  const copiedPages = await newDoc.copyPages(srcDoc, newOrder);
+  copiedPages.forEach((page) => newDoc.addPage(page));
+  return newDoc.save();
+}
+
 export async function addDrawingToPdf(
   pdfBytes: ArrayBuffer,
   pageIndex: number,

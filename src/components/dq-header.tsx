@@ -4,6 +4,7 @@ import { useCallback, useRef } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
+import { YuunamaGoblin } from '@/components/dq-characters';
 import PageNav from '@/components/page-nav';
 
 export default function DqHeader() {
@@ -53,7 +54,7 @@ export default function DqHeader() {
     >
       {/* 左: 魔物アイコン + タイトル */}
       <div className="flex items-center gap-2 min-w-0">
-        <DqSlime size={28} bounce={false} />
+{hasPdf ? <YuunamaGoblin size={28} bounce={false} /> : <DqSlime size={28} bounce={false} />}
         <div className="flex flex-col min-w-0">
           <h1 className="dq-title text-base truncate leading-tight">
             ⛏ はかいしんの PDF工房

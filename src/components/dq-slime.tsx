@@ -2,6 +2,15 @@
 
 import React from "react";
 
+// Re-export all character components for convenient importing
+export {
+  YuunamaHero,
+  YuunamaLilith,
+  YuunamaDragon,
+  YuunamaGoblin,
+  YuunamaMushroomMan,
+} from "./dq-characters";
+
 interface DqSlimeProps {
   size?: number;
   bounce?: boolean;

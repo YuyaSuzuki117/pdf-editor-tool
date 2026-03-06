@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
+import { YuunamaHero, YuunamaGoblin, YuunamaDragon } from '@/components/dq-characters';
 
 type Phase = 'idle' | 'loading' | 'error';
 
@@ -169,8 +170,9 @@ export default function DqDropZone() {
           <>
             {isDragging ? (
               <div className="flex flex-col items-center gap-4">
+                <YuunamaHero size={72} bounce />
                 <div className="dq-title text-lg ynk-active-sparkle" style={{ fontSize: 20 }}>
-                  ⚠ 勇者がちかづいてきた！
+                  勇者がちかづいてきた！
                 </div>
                 <div className="dq-text text-sm text-center">
                   いまだ！ ファイルを おとせ！
@@ -178,15 +180,20 @@ export default function DqDropZone() {
               </div>
             ) : (
               <>
-                <DqSlime size={80} bounce>
-                  はかいしんさま、あたらしい PDFを ほりだしますか？
-                </DqSlime>
+                {/* キャラクター集合 */}
+                <div className="flex items-end gap-2 justify-center">
+                  <YuunamaGoblin size={40} bounce />
+                  <DqSlime size={80} bounce>
+                    はかいしんさま、あたらしい PDFを ほりだしますか？
+                  </DqSlime>
+                  <YuunamaHero size={40} bounce />
+                </div>
 
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="dq-btn text-lg px-8"
                 >
-                  ⛏ ほりだす！
+                  ほりだす！
                 </button>
               </>
             )}
@@ -231,7 +238,8 @@ export default function DqDropZone() {
         {/* ----- ERROR: 掘削失敗 ----- */}
         {phase === 'error' && (
           <>
-            <DqSlime size={80} bounce={false}>
+            <YuunamaDragon size={64} bounce={false} />
+            <DqSlime size={60} bounce={false}>
               {errorMsg}
             </DqSlime>
 

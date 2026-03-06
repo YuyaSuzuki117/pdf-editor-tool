@@ -2,27 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { DqSlime } from './dq-slime';
+import { YuunamaHero, YuunamaLilith, YuunamaGoblin, YuunamaMushroomMan } from './dq-characters';
 
 const STORAGE_KEY = 'pdf-editor-onboarding-done';
 
+const stepCharacters = [
+  <YuunamaHero key="hero" size={56} bounce />,
+  <YuunamaGoblin key="goblin" size={56} bounce />,
+  <YuunamaMushroomMan key="mushroom" size={56} bounce />,
+  <YuunamaLilith key="lilith" size={56} bounce />,
+];
+
 const steps = [
   {
-    icon: '\uD83D\uDC41',
     title: '\u307F\u308B\u30E2\u30FC\u30C9',
     description: '\u307F\u308B\u30E2\u30FC\u30C9\u3067PDF\u3092\u95B2\u89A7\u3002\n\u30B9\u30EF\u30A4\u30D7\u3067\u30DA\u30FC\u30B8\u79FB\u52D5',
   },
   {
-    icon: '\u270F\uFE0F',
     title: '\u6587\u5B57\u30E2\u30FC\u30C9',
     description: '\u6587\u5B57\u3092\u30BF\u30C3\u30D7\u3057\u3066\u3001\nPDF\u306B\u76F4\u63A5\u30C6\u30AD\u30B9\u30C8\u3092\u8FFD\u52A0',
   },
   {
-    icon: '\uD83D\uDD8A',
     title: '\u63CF\u304F\u30E2\u30FC\u30C9',
     description: '\u63CF\u304F\u3067\u30D5\u30EA\u30FC\u30CF\u30F3\u30C9\u63CF\u753B',
   },
   {
-    icon: '\uD83D\uDCBE',
     title: '\u4FDD\u5B58',
     description: '\u4FDD\u5B58\u3067\u7DE8\u96C6\u6E08\u307FPDF\u3092\n\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9',
   },
@@ -104,18 +108,9 @@ export default function Onboarding() {
           ))}
         </div>
 
-        {/* Icon */}
+        {/* Character */}
         <div className="flex justify-center mb-3">
-          <div
-            style={{
-              fontSize: 48,
-              lineHeight: 1,
-              animation: 'dq-bounce 1.2s ease-in-out infinite',
-              filter: 'drop-shadow(0 2px 8px rgba(212,160,23,0.4))',
-            }}
-          >
-            {current.icon}
-          </div>
+          {stepCharacters[step]}
         </div>
 
         {/* Title */}

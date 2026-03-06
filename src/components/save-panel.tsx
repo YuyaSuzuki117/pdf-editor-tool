@@ -14,6 +14,7 @@ import {
 } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
 import { DqSlime } from '@/components/dq-slime';
+import { YuunamaMushroomMan } from '@/components/dq-characters';
 import type { TextStyle, DrawStyle, HighlightStyle } from '@/types/pdf';
 
 export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -293,10 +294,11 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center py-3" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '16px' }}>
-            <DqSlime size={48} bounce={true}>
-              <span style={{ fontSize: 12 }}>{'\u307E\u3060\u306A\u306B\u3082 \u307B\u308A\u3060\u3057\u3066\u3044\u306A\u3044\u305E'}</span>
-            </DqSlime>
+          <div className="flex flex-col items-center py-3 gap-2" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '16px' }}>
+            <YuunamaMushroomMan size={48} bounce />
+            <p className="dq-text text-xs text-center" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
+              まだなにも ほりだしていないぞ
+            </p>
           </div>
         )}
         {state.isModified && (

@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
+import { YuunamaLilith } from '@/components/dq-characters';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
-import { rotatePage, deletePage, mergePdfs } from '@/lib/pdf-editor';
+import { rotatePage, deletePage, mergePdfs, reorderPages } from '@/lib/pdf-editor';
 
 interface PageThumb {
   index: number;
@@ -100,19 +101,55 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     input.click();
   };
 
+  const handleMove = async (pageIndex: number, direction: 'up' | 'down') => {
+    if (!state.pdfData) return;
+    const total = state.numPages;
+    if (direction === 'up' && pageIndex === 0) return;
+    if (direction === 'down' && pageIndex >= total - 1) return;
+
+    const swapWith = direction === 'up' ? pageIndex - 1 : pageIndex + 1;
+    const newOrder = Array.from({ length: total }, (_, i) => i);
+    newOrder[pageIndex] = swapWith;
+    newOrder[swapWith] = pageIndex;
+
+    const newBytes = await reorderPages(state.pdfData, newOrder);
+    dispatch({
+      type: 'UPDATE_PDF_DATA',
+      payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: total },
+    });
+
+    // 現在のページが移動対象なら追従
+    if (state.currentPage === pageIndex + 1) {
+      dispatch({ type: 'SET_PAGE', payload: swapWith + 1 });
+    } else if (state.currentPage === swapWith + 1) {
+      dispatch({ type: 'SET_PAGE', payload: pageIndex + 1 });
+    }
+
+    generateThumbnails();
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--background)' }}>
-      <div className="dq-window flex items-center justify-between p-4" style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}>
+      {/* ヘッダー */}
+      <div
+        className="dq-window flex items-center justify-between px-4 py-3"
+        style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', flexShrink: 0 }}
+      >
         <h2 className="dq-title text-lg">ページ管理</h2>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <span className="text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
+            {state.numPages}ページ
+          </span>
           <button
             onClick={handleInsertPDF}
-            className="dq-btn-small flex items-center justify-center"
-            style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
+            className="dq-btn-small flex items-center gap-1 justify-center"
+            title="PDFを追加"
+            style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', padding: '4px 10px' }}
           >
-            <FilePlus size={20} />
+            <FilePlus size={16} />
+            <span className="text-xs hidden sm:inline">追加</span>
           </button>
           <button
             onClick={onClose}
@@ -123,60 +160,110 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-4">
+
+      {/* サムネイルグリッド */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4">
         {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="dq-spinner" />
+          <div className="flex flex-col items-center justify-center h-40 gap-3">
+            <YuunamaLilith size={56} bounce />
+            <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>ページを よみこみちゅう...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {thumbnails.map((thumb) => (
-              <div key={thumb.index} className="relative group">
-                <div
-                  className={`dq-thumbnail-frame cursor-pointer ${
-                    state.currentPage === thumb.index + 1 ? 'active' : ''
-                  }`}
-                  style={{
-                    border: `3px solid ${state.currentPage === thumb.index + 1 ? '#d4a017' : '#7a5540'}`,
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                    background: '#1a1008',
-                    boxShadow: state.currentPage === thumb.index + 1 ? '0 0 12px rgba(245, 214, 123, 0.5)' : '0 2px 8px rgba(0,0,0,0.4)',
-                  }}
-                  onClick={() => {
-                    dispatch({ type: 'SET_PAGE', payload: thumb.index + 1 });
-                    onClose();
-                  }}
-                >
-                  {thumb.dataURL ? (
-                    <img src={thumb.dataURL} alt={`ページ ${thumb.index + 1}`} className="w-full" />
-                  ) : (
-                    <div className="w-full aspect-[3/4] flex items-center justify-center" style={{ background: '#2a1e12' }}>
-                      <div className="dq-spinner-sm" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+            {thumbnails.map((thumb) => {
+              const isActive = state.currentPage === thumb.index + 1;
+              const isFirst = thumb.index === 0;
+              const isLast = thumb.index === thumbnails.length - 1;
+
+              return (
+                <div key={thumb.index} className="relative group flex flex-col items-center">
+                  {/* サムネイル */}
+                  <div
+                    className="dq-thumbnail-frame cursor-pointer w-full transition-shadow"
+                    style={{
+                      border: `3px solid ${isActive ? '#d4a017' : '#7a5540'}`,
+                      borderRadius: 6,
+                      overflow: 'hidden',
+                      background: '#1a1008',
+                      boxShadow: isActive
+                        ? '0 0 14px rgba(245, 214, 123, 0.5)'
+                        : '0 2px 8px rgba(0,0,0,0.4)',
+                    }}
+                    onClick={() => {
+                      dispatch({ type: 'SET_PAGE', payload: thumb.index + 1 });
+                      onClose();
+                    }}
+                  >
+                    {thumb.dataURL ? (
+                      <img src={thumb.dataURL} alt={`ページ ${thumb.index + 1}`} className="w-full" />
+                    ) : (
+                      <div className="w-full aspect-[3/4] flex items-center justify-center" style={{ background: '#2a1e12' }}>
+                        <div className="dq-spinner-sm" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ページ番号 */}
+                  <p className="dq-text text-center text-xs mt-1" style={{ color: isActive ? '#d4a017' : 'var(--ynk-bone)', fontWeight: isActive ? 700 : 400 }}>
+                    {thumb.index + 1}
+                  </p>
+
+                  {/* 操作ボタン群（右上） */}
+                  <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRotate(thumb.index); }}
+                      className="dq-btn-small flex items-center justify-center"
+                      title="回転"
+                      style={{ minHeight: 28, minWidth: 28, padding: 3 }}
+                    >
+                      <RotateCw size={13} />
+                    </button>
+                    {state.numPages > 1 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(thumb.index); }}
+                        className="dq-btn-danger flex items-center justify-center"
+                        title="削除"
+                        style={{ minHeight: 28, minWidth: 28, padding: 3 }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 移動ボタン群（左側） */}
+                  {state.numPages > 1 && (
+                    <div className="absolute top-1 left-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMove(thumb.index, 'up'); }}
+                        className="dq-btn-small flex items-center justify-center"
+                        title="前へ移動"
+                        disabled={isFirst}
+                        style={{
+                          minHeight: 28, minWidth: 28, padding: 3,
+                          opacity: isFirst ? 0.3 : 1,
+                          cursor: isFirst ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <ChevronUp size={13} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMove(thumb.index, 'down'); }}
+                        className="dq-btn-small flex items-center justify-center"
+                        title="後へ移動"
+                        disabled={isLast}
+                        style={{
+                          minHeight: 28, minWidth: 28, padding: 3,
+                          opacity: isLast ? 0.3 : 1,
+                          cursor: isLast ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <ChevronDown size={13} />
+                      </button>
                     </div>
                   )}
                 </div>
-                <p className="dq-text text-center text-xs mt-1" style={{ color: 'var(--ynk-gold)' }}>{thumb.index + 1}</p>
-                <div className="absolute top-1 right-1 flex flex-col gap-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRotate(thumb.index); }}
-                    className="dq-btn-small flex items-center justify-center"
-                    style={{ minHeight: 32, minWidth: 32, padding: 4 }}
-                  >
-                    <RotateCw size={14} />
-                  </button>
-                  {state.numPages > 1 && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(thumb.index); }}
-                      className="dq-btn-danger flex items-center justify-center"
-                      style={{ minHeight: 32, minWidth: 32, padding: 4 }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
