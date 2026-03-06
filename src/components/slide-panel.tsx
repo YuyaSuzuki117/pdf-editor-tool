@@ -64,25 +64,30 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end">
-      <div
-        className="absolute inset-0 dq-overlay transition-opacity duration-300"
-        style={{
-          opacity: translateY === 0 ? (allowInteraction ? 0.3 : 1) : 0.5,
-          background: allowInteraction ? 'rgba(5, 4, 2, 0.25)' : 'rgba(5, 4, 2, 0.85)',
-          pointerEvents: allowInteraction ? 'none' : 'auto',
-        }}
-        onClick={allowInteraction ? undefined : onClose}
-      />
+    <div
+      className="fixed inset-0 z-50 flex items-end"
+      style={{ pointerEvents: allowInteraction ? 'none' : 'auto' }}
+    >
+      {!allowInteraction && (
+        <div
+          className="absolute inset-0 dq-overlay transition-opacity duration-300"
+          style={{
+            opacity: translateY === 0 ? 1 : 0.5,
+            background: 'rgba(5, 4, 2, 0.85)',
+          }}
+          onClick={onClose}
+        />
+      )}
       <div
         role="dialog"
-        aria-modal="true"
+        aria-modal={!allowInteraction}
         aria-label={title}
         className="relative w-full max-h-[70vh] dq-window rounded-t-md rounded-b-none dq-panel-smooth ynk-dungeon-wall"
         style={{
           transform: `translateY(${translateY}%)`,
           background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',
           borderColor: '#5c4a2e',
+          pointerEvents: 'auto',
         }}
       >
         {/* 石のアーチ装飾 */}
