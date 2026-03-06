@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { FileDown, Image } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import {
@@ -31,6 +31,14 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const [filename, setFilename] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // パネルを開いた時に既存ファイル名を自動入力
+  useEffect(() => {
+    if (isOpen && state.file?.name) {
+      const baseName = state.file.name.replace(/\.pdf$/i, '');
+      setFilename(baseName);
+    }
+  }, [isOpen, state.file?.name]);
+
   const getFilename = () => {
     const base = filename.trim() || state.file?.name?.replace('.pdf', '') || 'document';
     return `${base}_edited.pdf`;
@@ -42,39 +50,62 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
 
     for (const ann of state.annotations) {
       const pageIndex = ann.page - 1;
+      const scale = ann.renderScale || 1;
       switch (ann.type) {
         case 'text': {
           const style = ann.style as TextStyle;
+          const pdfPos = {
+            x: ann.position.x / scale,
+            y: ann.position.y / scale,
+          };
           const result = await addTextToPdf(
             currentData,
             pageIndex,
             ann.content,
-            ann.position,
+            pdfPos,
             style.fontSize,
-            style.color
+            style.color,
+            style.fontFamily || 'Noto Sans JP'
           );
           currentData = result.buffer as ArrayBuffer;
           break;
         }
         case 'draw': {
           const style = ann.style as DrawStyle;
+          // SVGパス内の座標もスケール変換する
+          const scaledSvgPath = ann.content.replace(
+            /([ML])([\d.]+),([\d.]+)/g,
+            (_match, cmd, xStr, yStr) => {
+              const sx = parseFloat(xStr) / scale;
+              const sy = parseFloat(yStr) / scale;
+              return `${cmd}${sx},${sy}`;
+            }
+          );
           const result = await addDrawingToPdf(
             currentData,
             pageIndex,
-            ann.content,
+            scaledSvgPath,
             style.strokeColor,
-            style.strokeWidth
+            style.strokeWidth / scale
           );
           currentData = result.buffer as ArrayBuffer;
           break;
         }
         case 'highlight': {
           const style = ann.style as HighlightStyle;
+          const pdfPos = {
+            x: ann.position.x / scale,
+            y: ann.position.y / scale,
+          };
+          const pdfSize = {
+            width: style.width / scale,
+            height: style.height / scale,
+          };
           const result = await addHighlightToPdf(
             currentData,
             pageIndex,
-            ann.position,
-            { width: style.width, height: style.height },
+            pdfPos,
+            pdfSize,
             style.color,
             style.opacity
           );
@@ -107,7 +138,76 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     if (!canvas) return;
     setSaving(true);
     try {
-      const dataURL = canvas.toDataURL('image/png');
+      // 新しいcanvasを作成し、PDFキャンバスの上にアノテーションを合成する
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = canvas.width;
+      outCanvas.height = canvas.height;
+      const ctx = outCanvas.getContext('2d')!;
+
+      // 元のPDFキャンバスを描画
+      ctx.drawImage(canvas, 0, 0);
+
+      // 現在のページのアノテーションを描画
+      const pageAnnotations = state.annotations.filter(
+        (a) => a.page === state.currentPage
+      );
+
+      for (const ann of pageAnnotations) {
+        if (ann.type === 'highlight') {
+          const style = ann.style as HighlightStyle;
+          ctx.save();
+          ctx.globalAlpha = style.opacity;
+          ctx.fillStyle = style.color;
+          ctx.fillRect(ann.position.x, ann.position.y, style.width, style.height);
+          ctx.restore();
+        } else if (ann.type === 'draw') {
+          const style = ann.style as DrawStyle;
+          const points = ann.content
+            .split(/[ML]/)
+            .filter(Boolean)
+            .map((p) => {
+              const [x, y] = p.trim().split(',').map(Number);
+              return { x, y };
+            });
+          if (points.length >= 2) {
+            ctx.save();
+            ctx.strokeStyle = style.strokeColor;
+            ctx.lineWidth = style.strokeWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+              ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else if (ann.type === 'text') {
+          const style = ann.style as TextStyle;
+          const renderScale = canvas.dataset.renderScale
+            ? parseFloat(canvas.dataset.renderScale)
+            : 1;
+          ctx.save();
+          ctx.fillStyle = style.color;
+          const scaledSize = style.fontSize * renderScale;
+          const family = style.fontFamily || 'Helvetica, Arial, sans-serif';
+          ctx.font = `${scaledSize}px ${family}`;
+          ctx.textBaseline = 'top';
+          // canvasの描画座標はdisplay座標 * devicePixelRatio相当のスケール
+          const scaleRatio = canvas.width / canvas.offsetWidth;
+          const x = ann.position.x * scaleRatio;
+          const y = ann.position.y * scaleRatio;
+          // 改行対応
+          const lines = ann.content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], x, y + i * scaledSize * scaleRatio * 1.2);
+          }
+          ctx.restore();
+        }
+      }
+
+      const dataURL = outCanvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = dataURL;
       a.download = `${filename.trim() || 'page'}_${state.currentPage}.png`;
@@ -119,9 +219,31 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   };
 
+  // アノテーション内訳を計算
+  const annotationSummary = (() => {
+    const counts: Record<string, number> = {};
+    for (const ann of state.annotations) {
+      const label = ann.type === 'text' ? 'テキスト' : ann.type === 'draw' ? '描画' : ann.type === 'highlight' ? 'マーカー' : '画像';
+      counts[label] = (counts[label] || 0) + 1;
+    }
+    return Object.entries(counts).map(([label, count]) => `${label}${count}件`).join('、');
+  })();
+
   return (
     <SlidePanel isOpen={isOpen} onClose={onClose} title="保存・書き出し">
       <div className="space-y-4">
+        {/* アノテーション内訳 or 編集なし表示 */}
+        {state.annotations.length > 0 ? (
+          <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--ynk-gold)', borderRadius: 4, padding: '12px 16px' }}>
+            <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
+              編集内容: {annotationSummary}
+            </p>
+          </div>
+        ) : (
+          <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '12px 16px' }}>
+            <p className="dq-text text-sm opacity-60">編集内容がありません</p>
+          </div>
+        )}
         {state.isModified && (
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--ynk-gold)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>未保存の変更があります</p>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0d0804" rx="64"/>
+  <!-- つるはしの柄 -->
+  <line x1="340" y1="140" x2="170" y2="370" stroke="#8b6914" stroke-width="28" stroke-linecap="round"/>
+  <!-- つるはしの刃（左） -->
+  <path d="M320 130 C340 80, 400 70, 420 100 L360 160 Z" fill="#d4a017"/>
+  <!-- つるはしの刃（右） -->
+  <path d="M350 150 C400 130, 430 160, 420 200 L360 160 Z" fill="#b88a10"/>
+  <!-- ハイライト -->
+  <path d="M340 100 C350 85, 380 80, 400 95" stroke="#e8c040" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- 鉱石の輝き -->
+  <circle cx="130" cy="420" r="8" fill="#7ec8e3" opacity="0.6"/>
+  <circle cx="400" cy="350" r="6" fill="#d4a017" opacity="0.5"/>
+  <circle cx="100" cy="200" r="5" fill="#7ec8e3" opacity="0.4"/>
+</svg>

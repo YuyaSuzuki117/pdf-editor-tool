@@ -19,14 +19,28 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
   const generateThumbnails = useCallback(async () => {
     if (!state.pdfData) return;
     setLoading(true);
+    setThumbnails([]);
     const doc = await loadDocumentFromBytes(state.pdfData);
-    const thumbs: PageThumb[] = [];
-    for (let i = 1; i <= doc.numPages; i++) {
-      const dataURL = await renderPageToDataURL(doc, i, 0.3);
-      thumbs.push({ index: i - 1, dataURL });
+    // プレースホルダーを先に設定
+    const placeholders: PageThumb[] = [];
+    for (let i = 0; i < doc.numPages; i++) {
+      placeholders.push({ index: i, dataURL: '' });
     }
-    setThumbnails(thumbs);
+    setThumbnails(placeholders);
     setLoading(false);
+
+    // 1枚ずつ非ブロッキングで生成（setTimeoutで分割）
+    for (let i = 1; i <= doc.numPages; i++) {
+      await new Promise<void>((resolve) => {
+        setTimeout(async () => {
+          const dataURL = await renderPageToDataURL(doc, i, 0.3);
+          setThumbnails((prev) =>
+            prev.map((t) => (t.index === i - 1 ? { ...t, dataURL } : t))
+          );
+          resolve();
+        }, 0);
+      });
+    }
   }, [state.pdfData]);
 
   useEffect(() => {
@@ -125,7 +139,13 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     onClose();
                   }}
                 >
-                  <img src={thumb.dataURL} alt={`ページ ${thumb.index + 1}`} className="w-full" />
+                  {thumb.dataURL ? (
+                    <img src={thumb.dataURL} alt={`ページ ${thumb.index + 1}`} className="w-full" />
+                  ) : (
+                    <div className="w-full aspect-[3/4] flex items-center justify-center" style={{ background: '#2a1e12' }}>
+                      <div className="w-6 h-6 border-2 border-[var(--ynk-gold)] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
                 <p className="dq-text text-center text-xs mt-1" style={{ color: 'var(--ynk-gold)' }}>{thumb.index + 1}</p>
                 <div className="absolute top-1 right-1 flex flex-col gap-1">

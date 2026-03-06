@@ -91,6 +91,16 @@ export default function ZoomControls() {
         {/* 区切り線（鉄のリベット） */}
         <div style={{ width: '80%', height: 2, background: 'linear-gradient(90deg, transparent 0%, #5c4a2e 30%, #8b6914 50%, #5c4a2e 70%, transparent 100%)' }} />
 
+        {/* 50%プリセット */}
+        <button
+          onClick={() => setScale(0.5)}
+          className="flex items-center justify-center w-10 h-7 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          style={leverBtnStyle}
+          aria-label="50%"
+        >
+          <span className="dq-text text-[10px] leading-none" style={{ color: 'var(--ynk-gold)' }}>50%</span>
+        </button>
+
         {/* 幅に合わせる - ダイヤル風 */}
         <button
           onClick={fitWidth}
@@ -111,6 +121,16 @@ export default function ZoomControls() {
           >
             <path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" />
           </svg>
+        </button>
+
+        {/* 200%プリセット */}
+        <button
+          onClick={() => setScale(2)}
+          className="flex items-center justify-center w-10 h-7 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          style={leverBtnStyle}
+          aria-label="200%"
+        >
+          <span className="dq-text text-[10px] leading-none" style={{ color: 'var(--ynk-gold)' }}>200%</span>
         </button>
       </div>
     </div>

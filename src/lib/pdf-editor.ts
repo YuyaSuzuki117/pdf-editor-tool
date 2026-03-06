@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -7,18 +8,47 @@ function hexToRgb(hex: string) {
   return rgb(r, g, b);
 }
 
+// 日本語フォントキャッシュ
+let cachedFontBytes: ArrayBuffer | null = null;
+
+async function getJapaneseFont(): Promise<ArrayBuffer> {
+  if (cachedFontBytes) return cachedFontBytes;
+  const response = await fetch(
+    'https://fonts.gstatic.com/s/notosansjp/v53/Ia2Dwd1E0sPT-61h3ej3nhRVlE16.ttf'
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Japanese font: ${response.status}`);
+  }
+  cachedFontBytes = await response.arrayBuffer();
+  return cachedFontBytes;
+}
+
 export async function addTextToPdf(
   pdfBytes: ArrayBuffer,
   pageIndex: number,
   text: string,
   position: { x: number; y: number },
   fontSize: number = 16,
-  color: string = '#000000'
+  color: string = '#000000',
+  fontFamily: string = 'Noto Sans JP'
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.load(pdfBytes);
   const page = doc.getPages()[pageIndex];
   const { height } = page.getSize();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
+
+  let font;
+  if (fontFamily === 'Noto Sans JP') {
+    try {
+      doc.registerFontkit(fontkit);
+      const fontBytes = await getJapaneseFont();
+      font = await doc.embedFont(fontBytes, { subset: true });
+    } catch (err) {
+      console.warn('日本語フォント読み込み失敗、Helveticaにフォールバック:', err);
+      font = await doc.embedFont(StandardFonts.Helvetica);
+    }
+  } else {
+    font = await doc.embedFont(StandardFonts.Helvetica);
+  }
 
   page.drawText(text, {
     x: position.x,

@@ -7,6 +7,12 @@ import { DqSlime } from '@/components/dq-slime';
 
 type Phase = 'idle' | 'loading' | 'error';
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function DqDropZone() {
   const { dispatch } = usePDF();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -14,20 +20,27 @@ export default function DqDropZone() {
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [fileSize, setFileSize] = useState('');
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (file.type !== 'application/pdf') {
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
         setPhase('error');
-        setErrorMsg('くっ...！ それは ダンジョンの ちずでは ないようだ...');
+        setErrorMsg(`くっ...！ それは ダンジョンの ちずでは ないようだ...\n（${file.type || '不明な形式'}は非対応。PDFのみ対応）`);
         return;
       }
       if (file.size > 100 * 1024 * 1024) {
         setPhase('error');
-        setErrorMsg('ダンジョンが ふかすぎる！ (100MB以下)');
+        setErrorMsg(`ダンジョンが ふかすぎる！\n（${formatFileSize(file.size)} → 100MB以下にしてください）`);
+        return;
+      }
+      if (file.size === 0) {
+        setPhase('error');
+        setErrorMsg('ファイルが からっぽだ！\n（0バイトのファイルは開けません）');
         return;
       }
 
+      setFileSize(formatFileSize(file.size));
       setPhase('loading');
       setProgress(0);
 
@@ -52,10 +65,19 @@ export default function DqDropZone() {
           type: 'LOAD_PDF',
           payload: { file, pdfData: arrayBuffer, numPages: doc.numPages },
         });
-      } catch {
+      } catch (err) {
         clearInterval(timer);
+        const message = err instanceof Error ? err.message : '';
+        let userMsg = 'くっ...！ PDFが こわれているようだ！';
+        if (message.includes('password') || message.includes('encrypt')) {
+          userMsg = 'このPDFは パスワードで まもられている！\n（暗号化されたPDFは開けません）';
+        } else if (message.includes('Invalid') || message.includes('corrupt')) {
+          userMsg = 'くっ...！ PDFが こわれているようだ！\n（ファイルが破損している可能性があります）';
+        } else {
+          userMsg = `くっ...！ PDFの よみこみに しっぱいした！\n（${message || '不明なエラー'}）`;
+        }
         setPhase('error');
-        setErrorMsg('くっ...！ ゆうしゃに ファイルを うばわれた！');
+        setErrorMsg(userMsg);
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     },
@@ -163,7 +185,7 @@ export default function DqDropZone() {
             {/* 掘削ゲージ */}
             <div className="w-full max-w-[240px]">
               <div className="flex justify-between mb-1">
-                <span className="dq-text text-xs">⛏ くっさく</span>
+                <span className="dq-text text-xs">⛏ くっさく {fileSize && `(${fileSize})`}</span>
                 <span className="dq-text text-xs">{Math.round(progress)}%</span>
               </div>
               <div className="dq-progress">

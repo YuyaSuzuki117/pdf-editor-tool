@@ -178,7 +178,7 @@ body {
 
 .dq-btn:disabled {
   background: linear-gradient(180deg, #555 0%, #333 100%);
-  color: #888;
+  color: #999;
   box-shadow:
     2px 0 0 0 #222,
     0 2px 0 0 #222,
@@ -248,7 +248,7 @@ body {
 
 .dq-btn-small:disabled {
   background: linear-gradient(180deg, #555 0%, #333 100%);
-  color: #888;
+  color: #999;
   box-shadow: 1px 0 0 0 #222, 0 1px 0 0 #222;
   cursor: not-allowed;
 }
@@ -426,6 +426,16 @@ body {
 @keyframes dq-toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes dq-placement-blink {
+  0%, 100% { opacity: 1; border-color: #3b82f6; }
+  50% { opacity: 0.5; border-color: #93c5fd; }
+}
+
+@keyframes dq-marching-ants {
+  0% { stroke-dashoffset: 0; border-offset: 0; }
+  100% { stroke-dashoffset: 16; border-offset: 16; }
 }
 
 /* ===== ピクセルボーダー ===== */

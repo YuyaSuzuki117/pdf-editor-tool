@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { PDFProvider, usePDF } from '@/contexts/pdf-context';
 import DqDropZone from '@/components/dq-drop-zone';
 import DqHeader from '@/components/dq-header';
@@ -11,9 +12,23 @@ import DrawPanel from '@/components/draw-panel';
 import HighlightPanel from '@/components/highlight-panel';
 import PageManager from '@/components/page-manager';
 import SavePanel from '@/components/save-panel';
+import AnnotationList from '@/components/annotation-list';
 
 function PDFApp() {
   const { state, dispatch } = usePDF();
+  const isModifiedRef = useRef(state.isModified);
+  isModifiedRef.current = state.isModified;
+
+  // 未保存警告: beforeunload
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isModifiedRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   const closePanel = () => dispatch({ type: 'SET_TOOL', payload: 'view' });
 
@@ -37,6 +52,7 @@ function PDFApp() {
       <HighlightPanel isOpen={state.toolMode === 'highlight'} onClose={closePanel} />
       <PageManager isOpen={state.toolMode === 'pages'} onClose={closePanel} />
       <SavePanel isOpen={state.toolMode === 'save'} onClose={closePanel} />
+      <AnnotationList />
     </div>
   );
 }

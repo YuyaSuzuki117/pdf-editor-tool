@@ -56,6 +56,9 @@ export default function SlidePanel({ isOpen, onClose, title, children }: SlidePa
         onClick={onClose}
       />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className="relative w-full max-h-[70vh] dq-window rounded-t-md rounded-b-none transition-transform duration-300 ease-out ynk-dungeon-wall"
         style={{
           transform: `translateY(${translateY}%)`,
@@ -126,6 +129,7 @@ export default function SlidePanel({ isOpen, onClose, title, children }: SlidePa
               boxShadow: '2px 0 0 0 #2a1c12, 0 2px 0 0 #2a1c12, 2px 2px 0 0 #2a1c12, -1px 0 0 0 #7a5540, 0 -1px 0 0 #7a5540',
               cursor: 'pointer',
             }}
+            aria-label="閉じる"
           >
             ✕
           </button>

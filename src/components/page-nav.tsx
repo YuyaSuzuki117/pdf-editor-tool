@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 
 export default function PageNav() {
@@ -20,6 +20,30 @@ export default function PageNav() {
   const prev = useCallback(() => goTo(state.currentPage - 1), [goTo, state.currentPage]);
   const next = useCallback(() => goTo(state.currentPage + 1), [goTo, state.currentPage]);
 
+  // キーボードショートカット: ←→キーでページ移動（viewモード時のみ）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // 入力フィールドにフォーカスがある場合は無視
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (state.toolMode !== 'view') return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (state.currentPage > 1) {
+          dispatch({ type: 'SET_PAGE', payload: state.currentPage - 1 });
+        }
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (state.currentPage < state.numPages) {
+          dispatch({ type: 'SET_PAGE', payload: state.currentPage + 1 });
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [state.toolMode, state.currentPage, state.numPages, dispatch]);
+
   const startEdit = useCallback(() => {
     setInputValue(String(state.currentPage));
     setIsEditing(true);
@@ -30,9 +54,12 @@ export default function PageNav() {
 
   const commitEdit = useCallback(() => {
     const num = parseInt(inputValue, 10);
-    if (!isNaN(num)) goTo(num);
+    if (!isNaN(num) && num >= 1 && num <= state.numPages) {
+      goTo(num);
+    }
+    // 無効な値（範囲外・NaN）の場合はページを変えずに閉じる
     setIsEditing(false);
-  }, [inputValue, goTo]);
+  }, [inputValue, goTo, state.numPages]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -42,13 +69,17 @@ export default function PageNav() {
     [commitEdit],
   );
 
+  const isFirstPage = state.currentPage <= 1;
+  const isLastPage = state.currentPage >= state.numPages;
+
   return (
     <div className="flex items-center gap-1">
       {/* 左矢印 */}
       <button
         onClick={prev}
-        disabled={state.currentPage <= 1}
-        className="dq-window flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] rounded-lg cursor-pointer select-none active:scale-90 transition-transform disabled:opacity-40"
+        disabled={isFirstPage}
+        className="dq-window flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] rounded-lg select-none active:scale-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
+        style={isFirstPage ? { filter: 'grayscale(0.8)', pointerEvents: 'none' } : { cursor: 'pointer' }}
         aria-label="前のページ"
       >
         <span className="dq-title text-sm leading-none">&lt;</span>
@@ -63,7 +94,18 @@ export default function PageNav() {
             min={1}
             max={state.numPages}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              // 空文字は許可（入力途中）、数値なら範囲内のみ許可
+              if (v === '' || v === '-') {
+                setInputValue(v);
+                return;
+              }
+              const num = parseInt(v, 10);
+              if (!isNaN(num) && num >= 0 && num <= state.numPages + 1) {
+                setInputValue(v);
+              }
+            }}
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
             className="w-10 h-7 bg-transparent text-center dq-text text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -85,8 +127,9 @@ export default function PageNav() {
       {/* 右矢印 */}
       <button
         onClick={next}
-        disabled={state.currentPage >= state.numPages}
-        className="dq-window flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] rounded-lg cursor-pointer select-none active:scale-90 transition-transform disabled:opacity-40"
+        disabled={isLastPage}
+        className="dq-window flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] rounded-lg select-none active:scale-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
+        style={isLastPage ? { filter: 'grayscale(0.8)', pointerEvents: 'none' } : { cursor: 'pointer' }}
         aria-label="次のページ"
       >
         <span className="dq-title text-sm leading-none">&gt;</span>

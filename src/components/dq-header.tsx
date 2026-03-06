@@ -14,6 +14,10 @@ export default function DqHeader() {
   const handleNewFile = useCallback(
     async (file: File) => {
       if (file.type !== 'application/pdf') return;
+      // 未保存変更がある場合は確認
+      if (state.isModified) {
+        if (!confirm('未保存の変更があります。新しいPDFを開きますか？')) return;
+      }
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
         const arrayBuffer = await file.arrayBuffer();
@@ -26,8 +30,10 @@ export default function DqHeader() {
         dispatch({ type: 'SET_ERROR', payload: 'PDFの読み込みに失敗しました' });
       }
     },
-    [dispatch],
+    [dispatch, state.isModified],
   );
+
+  const annotationCount = state.annotations.length;
 
   return (
     <header
@@ -49,7 +55,22 @@ export default function DqHeader() {
       <div className="flex items-center gap-2 min-w-0">
         <DqSlime size={28} bounce={false} />
         <div className="flex flex-col min-w-0">
-          <h1 className="dq-title text-base truncate leading-tight">⛏ はかいしんの PDF工房</h1>
+          <h1 className="dq-title text-base truncate leading-tight">
+            ⛏ はかいしんの PDF工房
+            {annotationCount > 0 && (
+              <span
+                className="inline-flex items-center justify-center ml-1 text-[9px] min-w-[16px] h-[16px] px-1 rounded-full"
+                style={{
+                  background: 'linear-gradient(180deg, #d4a017 0%, #8b6914 100%)',
+                  color: '#1a1008',
+                  fontWeight: 700,
+                  verticalAlign: 'middle',
+                }}
+              >
+                {annotationCount}
+              </span>
+            )}
+          </h1>
           {hasPdf && state.file && (
             <span className="dq-text text-[9px] truncate opacity-60 leading-tight" style={{ maxWidth: 160 }}>
               {state.file.name}

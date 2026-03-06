@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
@@ -16,8 +16,34 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
   const { state, dispatch } = usePDF();
   const [color, setColor] = useState('#fde047');
   const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [overlayBounds, setOverlayBounds] = useState<{ left: number; top: number; width: number; height: number }>({ left: 0, top: 0, width: 0, height: 0 });
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const highlightRenderScale = useRef(1);
+
+  // overlayをPDFcanvasの位置に合わせる
+  const updateOverlayBounds = useCallback(() => {
+    const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
+    if (!pdfCanvas) return;
+    const r = pdfCanvas.getBoundingClientRect();
+    setOverlayBounds({ left: r.left, top: r.top, width: r.width, height: r.height });
+    const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
+    if (scaleAttr) highlightRenderScale.current = parseFloat(scaleAttr);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(updateOverlayBounds, 100);
+      const container = document.querySelector('.pdf-canvas-container');
+      const handleScroll = () => updateOverlayBounds();
+      container?.addEventListener('scroll', handleScroll);
+      window.addEventListener('resize', handleScroll);
+      return () => {
+        container?.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleScroll);
+      };
+    }
+  }, [isOpen, updateOverlayBounds]);
 
   const getPosFromTouch = (e: React.TouchEvent) => {
     const el = overlayRef.current!;
@@ -79,6 +105,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
       position: { x: rect.x, y: rect.y },
       content: '',
       style: { color, opacity: 0.35, width: rect.w, height: rect.h },
+      renderScale: highlightRenderScale.current,
       createdAt: Date.now(),
     };
     dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
@@ -91,8 +118,13 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
       {isOpen && (
         <div
           ref={overlayRef}
-          className="fixed inset-0 z-30 touch-none cursor-crosshair"
-          style={{ top: 0, bottom: '70px' }}
+          className="fixed z-30 touch-none cursor-crosshair"
+          style={{
+            left: overlayBounds.left,
+            top: overlayBounds.top,
+            width: overlayBounds.width,
+            height: overlayBounds.height,
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -101,17 +133,52 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
           onMouseUp={handleMouseUp}
         >
           {rect && (
-            <div
-              className="absolute rounded"
-              style={{
-                left: rect.x,
-                top: rect.y,
-                width: rect.w,
-                height: rect.h,
-                backgroundColor: color,
-                opacity: 0.35,
-              }}
-            />
+            <>
+              {/* 塗り */}
+              <div
+                className="absolute rounded"
+                style={{
+                  left: rect.x,
+                  top: rect.y,
+                  width: rect.w,
+                  height: rect.h,
+                  backgroundColor: color,
+                  opacity: 0.35,
+                }}
+              />
+              {/* 点線ボーダーアニメーション */}
+              <div
+                className="absolute rounded"
+                style={{
+                  left: rect.x - 1,
+                  top: rect.y - 1,
+                  width: rect.w + 2,
+                  height: rect.h + 2,
+                  border: '2px dashed rgba(255,255,255,0.8)',
+                  animation: 'dq-marching-ants 0.5s linear infinite',
+                  pointerEvents: 'none',
+                }}
+              />
+              {/* サイズ表示 */}
+              {startPos.current && (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: rect.x + rect.w + 4,
+                    top: rect.y + rect.h + 4,
+                    background: 'rgba(0,0,0,0.75)',
+                    color: '#d4a017',
+                    fontSize: 11,
+                    padding: '2px 6px',
+                    borderRadius: 3,
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {Math.round(rect.w)} x {Math.round(rect.h)}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

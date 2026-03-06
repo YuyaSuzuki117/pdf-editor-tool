@@ -38,6 +38,7 @@ export interface Annotation {
   position: Position;
   content: string;
   style: TextStyle | DrawStyle | HighlightStyle | Record<string, string | number>;
+  renderScale?: number;
   createdAt: number;
 }
 
@@ -66,4 +67,6 @@ export type PDFAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'UPDATE_PDF_DATA'; payload: { pdfData: ArrayBuffer; numPages: number } }
+  | { type: 'UNDO_ANNOTATION' }
+  | { type: 'CLEAR_ANNOTATIONS' }
   | { type: 'RESET' };

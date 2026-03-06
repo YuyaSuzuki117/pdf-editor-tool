@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useReducer, ReactNode } from 'react';
-import { PDFState, PDFAction } from '@/types/pdf';
+import { createContext, useContext, useReducer, useRef, useCallback, ReactNode } from 'react';
+import { PDFState, PDFAction, Annotation } from '@/types/pdf';
 
 const initialState: PDFState = {
   file: null,
@@ -16,64 +16,119 @@ const initialState: PDFState = {
   error: null,
 };
 
-function pdfReducer(state: PDFState, action: PDFAction): PDFState {
+interface ReducerState {
+  pdfState: PDFState;
+  undoStack: Annotation[];
+}
+
+const initialReducerState: ReducerState = {
+  pdfState: initialState,
+  undoStack: [],
+};
+
+function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
+  const s = state.pdfState;
   switch (action.type) {
     case 'LOAD_PDF':
       return {
-        ...initialState,
-        file: action.payload.file,
-        pdfData: action.payload.pdfData,
-        numPages: action.payload.numPages,
-        currentPage: 1,
-        scale: 1,
+        pdfState: {
+          ...initialState,
+          file: action.payload.file,
+          pdfData: action.payload.pdfData,
+          numPages: action.payload.numPages,
+          currentPage: 1,
+          scale: 1,
+        },
+        undoStack: [],
       };
     case 'SET_PAGE':
       return {
         ...state,
-        currentPage: Math.max(1, Math.min(action.payload, state.numPages)),
+        pdfState: {
+          ...s,
+          currentPage: Math.max(1, Math.min(action.payload, s.numPages)),
+        },
       };
     case 'SET_SCALE':
       return {
         ...state,
-        scale: Math.max(0.25, Math.min(5, action.payload)),
+        pdfState: {
+          ...s,
+          scale: Math.max(0.25, Math.min(5, action.payload)),
+        },
       };
     case 'SET_TOOL':
-      return { ...state, toolMode: action.payload };
+      return { ...state, pdfState: { ...s, toolMode: action.payload } };
     case 'ADD_ANNOTATION':
       return {
         ...state,
-        annotations: [...state.annotations, action.payload],
-        isModified: true,
+        pdfState: {
+          ...s,
+          annotations: [...s.annotations, action.payload],
+          isModified: true,
+        },
       };
-    case 'REMOVE_ANNOTATION':
+    case 'REMOVE_ANNOTATION': {
+      const removed = s.annotations.find((a) => a.id === action.payload);
       return {
-        ...state,
-        annotations: state.annotations.filter((a) => a.id !== action.payload),
-        isModified: true,
+        pdfState: {
+          ...s,
+          annotations: s.annotations.filter((a) => a.id !== action.payload),
+          isModified: true,
+        },
+        undoStack: removed ? [...state.undoStack, removed] : state.undoStack,
       };
+    }
     case 'UPDATE_ANNOTATION':
       return {
         ...state,
-        annotations: state.annotations.map((a) =>
-          a.id === action.payload.id ? { ...a, ...action.payload.updates } : a
-        ),
-        isModified: true,
+        pdfState: {
+          ...s,
+          annotations: s.annotations.map((a) =>
+            a.id === action.payload.id ? { ...a, ...action.payload.updates } : a
+          ),
+          isModified: true,
+        },
       };
     case 'SET_MODIFIED':
-      return { ...state, isModified: action.payload };
+      return { ...state, pdfState: { ...s, isModified: action.payload } };
     case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
+      return { ...state, pdfState: { ...s, isLoading: action.payload } };
     case 'SET_ERROR':
-      return { ...state, error: action.payload, isLoading: false };
+      return { ...state, pdfState: { ...s, error: action.payload, isLoading: false } };
     case 'UPDATE_PDF_DATA':
       return {
         ...state,
-        pdfData: action.payload.pdfData,
-        numPages: action.payload.numPages,
-        isModified: true,
+        pdfState: {
+          ...s,
+          pdfData: action.payload.pdfData,
+          numPages: action.payload.numPages,
+          isModified: true,
+        },
+      };
+    case 'UNDO_ANNOTATION': {
+      if (state.undoStack.length === 0) return state;
+      const restored = state.undoStack[state.undoStack.length - 1];
+      return {
+        pdfState: {
+          ...s,
+          annotations: [...s.annotations, restored],
+          isModified: s.annotations.length > 0 || true,
+        },
+        undoStack: state.undoStack.slice(0, -1),
+      };
+    }
+    case 'CLEAR_ANNOTATIONS':
+      return {
+        pdfState: {
+          ...s,
+          annotations: [],
+          isModified: s.annotations.length > 0 ? true : s.isModified,
+        },
+        undoStack: [],
       };
     case 'RESET':
-      return initialState;
+      return initialReducerState;
     default:
       return state;
   }
@@ -82,12 +137,20 @@ function pdfReducer(state: PDFState, action: PDFAction): PDFState {
 const PDFContext = createContext<{
   state: PDFState;
   dispatch: React.Dispatch<PDFAction>;
+  undoStackSize: number;
 } | null>(null);
 
 export function PDFProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(pdfReducer, initialState);
+  const [reducerState, rawDispatch] = useReducer(combinedReducer, initialReducerState);
+  const undoStackSizeRef = useRef(0);
+  undoStackSizeRef.current = reducerState.undoStack.length;
+
+  const dispatch = useCallback((action: PDFAction) => {
+    rawDispatch(action);
+  }, []);
+
   return (
-    <PDFContext.Provider value={{ state, dispatch }}>
+    <PDFContext.Provider value={{ state: reducerState.pdfState, dispatch, undoStackSize: reducerState.undoStack.length }}>
       {children}
     </PDFContext.Provider>
   );

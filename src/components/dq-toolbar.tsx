@@ -77,7 +77,7 @@ const tools: ToolDef[] = [
 ];
 
 export default function DqToolbar() {
-  const { state, dispatch } = usePDF();
+  const { state, dispatch, undoStackSize } = usePDF();
 
   return (
     <div
@@ -89,13 +89,30 @@ export default function DqToolbar() {
         boxShadow: '0 -4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(92,74,46,0.2)',
       }}
     >
-      <div className="flex items-stretch justify-around">
+      <div className="flex items-stretch justify-around" role="toolbar" aria-label="PDF編集ツール">
+        {/* Undoボタン: undoStackに要素がある場合のみ表示 */}
+        {undoStackSize > 0 && (
+          <button
+            onClick={() => dispatch({ type: 'UNDO_ANNOTATION' })}
+            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
+            title="直前の削除を戻す"
+            aria-label="直前の削除を戻す"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">戻す</span>
+          </button>
+        )}
         {tools.map(({ mode, label, icon }) => {
           const active = state.toolMode === mode;
           return (
             <button
               key={mode}
               onClick={() => dispatch({ type: 'SET_TOOL', payload: mode })}
+              aria-label={label}
+              aria-pressed={active}
               className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 ${
                 active ? 'text-[var(--ynk-gold)]' : 'text-[var(--ynk-bone)] opacity-60 hover:opacity-100'
               }`}
