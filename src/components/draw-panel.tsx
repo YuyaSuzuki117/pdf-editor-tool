@@ -214,6 +214,8 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
         <canvas
           ref={canvasRef}
           className="fixed z-30 touch-none"
+          role="img"
+          aria-label="フリーハンド描画キャンバス"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}

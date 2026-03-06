@@ -33,10 +33,14 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     for (let i = 1; i <= doc.numPages; i++) {
       await new Promise<void>((resolve) => {
         setTimeout(async () => {
-          const dataURL = await renderPageToDataURL(doc, i, 0.3);
-          setThumbnails((prev) =>
-            prev.map((t) => (t.index === i - 1 ? { ...t, dataURL } : t))
-          );
+          try {
+            const dataURL = await renderPageToDataURL(doc, i, 0.3);
+            setThumbnails((prev) =>
+              prev.map((t) => (t.index === i - 1 ? { ...t, dataURL } : t))
+            );
+          } catch {
+            // サムネイル生成失敗は無視（プレースホルダーのまま）
+          }
           resolve();
         }, 0);
       });

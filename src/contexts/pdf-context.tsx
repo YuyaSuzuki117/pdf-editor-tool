@@ -113,7 +113,7 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
         pdfState: {
           ...s,
           annotations: [...s.annotations, restored],
-          isModified: s.annotations.length > 0 || true,
+          isModified: true,
         },
         undoStack: state.undoStack.slice(0, -1),
       };

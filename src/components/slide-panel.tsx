@@ -26,6 +26,19 @@ export default function SlidePanel({ isOpen, onClose, title, children }: SlidePa
     }
   }, [isOpen]);
 
+  // Escapeキーで閉じる
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleDragStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
   };

@@ -1,11 +1,28 @@
-import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
+// pdf-lib は動的インポートで初回利用時にのみロード（バンドルサイズ削減）
+let pdfLibModule: typeof import('pdf-lib') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let fontkitModule: any = null;
 
-function hexToRgb(hex: string) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return rgb(r, g, b);
+async function getPdfLib() {
+  if (!pdfLibModule) {
+    pdfLibModule = await import('pdf-lib');
+  }
+  return pdfLibModule;
+}
+
+async function getFontkit() {
+  if (!fontkitModule) {
+    const mod = await import('@pdf-lib/fontkit');
+    fontkitModule = mod.default ?? mod;
+  }
+  return fontkitModule;
+}
+
+function hexToRgb(r_hex: string, rgb_fn: typeof import('pdf-lib').rgb) {
+  const r = parseInt(r_hex.slice(1, 3), 16) / 255;
+  const g = parseInt(r_hex.slice(3, 5), 16) / 255;
+  const b = parseInt(r_hex.slice(5, 7), 16) / 255;
+  return rgb_fn(r, g, b);
 }
 
 // 日本語フォントキャッシュ
@@ -32,6 +49,7 @@ export async function addTextToPdf(
   color: string = '#000000',
   fontFamily: string = 'Noto Sans JP'
 ): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const page = doc.getPages()[pageIndex];
   const { height } = page.getSize();
@@ -39,11 +57,11 @@ export async function addTextToPdf(
   let font;
   if (fontFamily === 'Noto Sans JP') {
     try {
+      const fontkit = await getFontkit();
       doc.registerFontkit(fontkit);
       const fontBytes = await getJapaneseFont();
       font = await doc.embedFont(fontBytes, { subset: true });
-    } catch (err) {
-      console.warn('日本語フォント読み込み失敗、Helveticaにフォールバック:', err);
+    } catch {
       font = await doc.embedFont(StandardFonts.Helvetica);
     }
   } else {
@@ -55,7 +73,7 @@ export async function addTextToPdf(
     y: height - position.y - fontSize,
     size: fontSize,
     font,
-    color: hexToRgb(color),
+    color: hexToRgb(color, rgb),
   });
 
   return doc.save();
@@ -68,6 +86,7 @@ export async function addImageToPdf(
   position: { x: number; y: number },
   size: { width: number; height: number }
 ): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const page = doc.getPages()[pageIndex];
   const { height } = page.getSize();
@@ -94,6 +113,7 @@ export async function rotatePage(
   pageIndex: number,
   rotation: number = 90
 ): Promise<Uint8Array> {
+  const { PDFDocument, degrees } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const page = doc.getPages()[pageIndex];
   const current = page.getRotation().angle;
@@ -105,6 +125,7 @@ export async function deletePage(
   pdfBytes: ArrayBuffer,
   pageIndex: number
 ): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   if (doc.getPageCount() <= 1) {
     throw new Error('最後のページは削除できません');
@@ -116,6 +137,7 @@ export async function deletePage(
 export async function mergePdfs(
   pdfBytesArray: ArrayBuffer[]
 ): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
   const merged = await PDFDocument.create();
   for (const bytes of pdfBytesArray) {
     const donor = await PDFDocument.load(bytes);
@@ -132,6 +154,7 @@ export async function addDrawingToPdf(
   color: string = '#000000',
   strokeWidth: number = 2
 ): Promise<Uint8Array> {
+  const { PDFDocument, rgb } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const page = doc.getPages()[pageIndex];
   const { height } = page.getSize();
@@ -146,7 +169,7 @@ export async function addDrawingToPdf(
       start: points[i - 1],
       end: points[i],
       thickness: strokeWidth,
-      color: hexToRgb(color),
+      color: hexToRgb(color, rgb),
     });
   }
 
@@ -161,6 +184,7 @@ export async function addHighlightToPdf(
   color: string = '#ffff00',
   opacity: number = 0.35
 ): Promise<Uint8Array> {
+  const { PDFDocument, rgb } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const page = doc.getPages()[pageIndex];
   const { height } = page.getSize();
@@ -170,7 +194,7 @@ export async function addHighlightToPdf(
     y: height - position.y - size.height,
     width: size.width,
     height: size.height,
-    color: hexToRgb(color),
+    color: hexToRgb(color, rgb),
     opacity,
   });
 
@@ -183,9 +207,12 @@ export function savePdfAsBlob(pdfBytes: Uint8Array): Blob {
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

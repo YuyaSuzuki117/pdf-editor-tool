@@ -168,10 +168,11 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-2 -right-4 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-5 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
+            aria-label="削除"
           >
-            <X size={12} />
+            <X size={14} />
           </button>
         )}
       </div>
@@ -210,7 +211,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
       >
-        <svg width={svgWidth} height={svgHeight} style={{ overflow: 'visible' }}>
+        <svg width={svgWidth} height={svgHeight} style={{ overflow: 'visible' }} role="img" aria-label="描画アノテーション">
           <path
             d={pathData}
             fill="none"
@@ -228,10 +229,11 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
+            aria-label="削除"
           >
-            <X size={12} />
+            <X size={14} />
           </button>
         )}
       </div>
@@ -267,10 +269,11 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto', opacity: 1 }}
+            aria-label="削除"
           >
-            <X size={12} />
+            <X size={14} />
           </button>
         )}
       </div>
@@ -300,7 +303,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={ann.content}
-          alt="annotation"
+          alt="スタンプ・画像アノテーション"
           style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
         />
         {toolMode === 'view' && (
@@ -311,10 +314,11 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
+            aria-label="削除"
           >
-            <X size={12} />
+            <X size={14} />
           </button>
         )}
       </div>
@@ -551,9 +555,10 @@ export default function PDFViewer() {
     }
   }, [state.toolMode]);
 
-  // 現在のページのアノテーションを取得
-  const currentAnnotations = state.annotations.filter(
-    (a) => a.page === state.currentPage
+  // 現在のページのアノテーションを取得（useMemoでキャッシュ）
+  const currentAnnotations = useMemo(
+    () => state.annotations.filter((a) => a.page === state.currentPage),
+    [state.annotations, state.currentPage]
   );
 
   // SVGパスからpointsを抽出（useMemoでキャッシュ）
