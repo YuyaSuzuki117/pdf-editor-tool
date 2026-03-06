@@ -45,6 +45,39 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Focus trap for modal mode
+  useEffect(() => {
+    if (!isOpen || allowInteraction) return;
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    if (!dialog) return;
+
+    const focusableEls = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusableEls.length === 0) return;
+
+    const firstEl = focusableEls[0];
+    const lastEl = focusableEls[focusableEls.length - 1];
+    firstEl.focus();
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl.focus();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleTab);
+    return () => window.removeEventListener('keydown', handleTab);
+  }, [isOpen, allowInteraction]);
+
   const handleDragStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
   };

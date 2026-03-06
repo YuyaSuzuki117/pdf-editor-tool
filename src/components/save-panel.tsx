@@ -5,13 +5,11 @@ import { FileDown, Image } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import {
-  addTextToPdf,
-  addDrawingToPdf,
-  addHighlightToPdf,
-  addImageToPdf,
+  applyAllAnnotations,
   savePdfAsBlob,
   downloadBlob,
 } from '@/lib/pdf-editor';
+import type { BatchAnnotation } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
 import { DqSlime } from '@/components/dq-slime';
 import { YuunamaMushroomMan } from '@/components/dq-characters';
@@ -38,44 +36,27 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const applyAnnotations = useCallback(async (): Promise<Uint8Array> => {
     if (!state.pdfData) throw new Error('PDFデータがありません');
-    let currentData: ArrayBuffer = state.pdfData.slice(0);
-    const total = state.annotations.length;
 
-    for (let idx = 0; idx < total; idx++) {
-      const ann = state.annotations[idx];
-      const pageIndex = ann.page - 1;
+    // 全アノテーションをBatchAnnotation形式に変換
+    const batch: BatchAnnotation[] = state.annotations.map((ann) => {
       const scale = ann.renderScale || 1;
-
-      // チャンク分割: 5件ごとにUIスレッドに制御を返す（フリーズ防止）
-      if (idx > 0 && idx % 5 === 0) {
-        await new Promise<void>((r) => setTimeout(r, 0));
-      }
-
-      // 実際の処理数に基づくプログレス計算
-      setSaveProgress(Math.round(((idx + 1) / total) * 90));
+      const pageIndex = ann.page - 1;
 
       switch (ann.type) {
         case 'text': {
           const style = ann.style as TextStyle;
-          const pdfPos = {
-            x: ann.position.x / scale,
-            y: ann.position.y / scale,
-          };
-          const result = await addTextToPdf(
-            currentData,
+          return {
+            type: 'text' as const,
             pageIndex,
-            ann.content,
-            pdfPos,
-            style.fontSize,
-            style.color,
-            style.fontFamily || 'Noto Sans JP'
-          );
-          currentData = result.buffer as ArrayBuffer;
-          break;
+            position: { x: ann.position.x / scale, y: ann.position.y / scale },
+            content: ann.content,
+            fontSize: style.fontSize,
+            color: style.color,
+            fontFamily: style.fontFamily || 'Noto Sans JP',
+          };
         }
         case 'draw': {
           const style = ann.style as DrawStyle;
-          // SVGパス内の座標もスケール変換する
           const scaledSvgPath = ann.content.replace(
             /([ML])([\d.]+),([\d.]+)/g,
             (_match, cmd, xStr, yStr) => {
@@ -84,69 +65,52 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
               return `${cmd}${sx},${sy}`;
             }
           );
-          const result = await addDrawingToPdf(
-            currentData,
+          return {
+            type: 'draw' as const,
             pageIndex,
-            scaledSvgPath,
-            style.strokeColor,
-            style.strokeWidth / scale
-          );
-          currentData = result.buffer as ArrayBuffer;
-          break;
+            position: { x: 0, y: 0 },
+            content: scaledSvgPath,
+            strokeColor: style.strokeColor,
+            strokeWidth: style.strokeWidth / scale,
+          };
         }
         case 'highlight': {
           const style = ann.style as HighlightStyle;
-          const pdfPos = {
-            x: ann.position.x / scale,
-            y: ann.position.y / scale,
-          };
-          const pdfSize = {
-            width: style.width / scale,
-            height: style.height / scale,
-          };
-          const result = await addHighlightToPdf(
-            currentData,
+          return {
+            type: 'highlight' as const,
             pageIndex,
-            pdfPos,
-            pdfSize,
-            style.color,
-            style.opacity
-          );
-          currentData = result.buffer as ArrayBuffer;
-          break;
+            position: { x: ann.position.x / scale, y: ann.position.y / scale },
+            content: '',
+            color: style.color,
+            opacity: style.opacity,
+            size: { width: style.width / scale, height: style.height / scale },
+          };
         }
         case 'image': {
           const imgStyle = ann.style as Record<string, string | number>;
-          const pdfPos = {
-            x: ann.position.x / scale,
-            y: ann.position.y / scale,
-          };
-          const pdfSize = {
-            width: ((imgStyle.width as number) || 150) / scale,
-            height: ((imgStyle.height as number) || 150) / scale,
-          };
-          // DataURLからバイナリに変換
-          const dataUrl = ann.content;
-          const base64 = dataUrl.split(',')[1];
+          const base64 = ann.content.split(',')[1];
           const binaryStr = atob(base64);
           const bytes = new Uint8Array(binaryStr.length);
           for (let i = 0; i < binaryStr.length; i++) {
             bytes[i] = binaryStr.charCodeAt(i);
           }
-          const result = await addImageToPdf(
-            currentData,
+          return {
+            type: 'image' as const,
             pageIndex,
-            bytes,
-            pdfPos,
-            pdfSize
-          );
-          currentData = result.buffer as ArrayBuffer;
-          break;
+            position: { x: ann.position.x / scale, y: ann.position.y / scale },
+            content: '',
+            imageBytes: bytes,
+            size: {
+              width: ((imgStyle.width as number) || 150) / scale,
+              height: ((imgStyle.height as number) || 150) / scale,
+            },
+          };
         }
       }
-    }
-    setSaveProgress(100);
-    return new Uint8Array(currentData);
+    });
+
+    // 1回のPDFDocument.load/saveで全アノテーションを適用
+    return applyAllAnnotations(state.pdfData, batch, setSaveProgress);
   }, [state.pdfData, state.annotations]);
 
   const handleSavePDF = async () => {

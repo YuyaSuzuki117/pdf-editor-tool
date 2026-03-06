@@ -197,6 +197,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
                   className={`dq-color-btn w-12 h-12 ${color === c.value ? 'active' : ''}`}
                   style={{ backgroundColor: c.value, borderColor: color === c.value ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
                   title={c.label}
+                  aria-label={c.label}
                 />
               ))}
             </div>

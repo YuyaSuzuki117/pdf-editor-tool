@@ -7,6 +7,13 @@ import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
 
 const strokeColors = ['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b'];
+const strokeColorNames: Record<string, string> = {
+  '#000000': '黒',
+  '#ef4444': '赤',
+  '#3b82f6': '青',
+  '#22c55e': '緑',
+  '#f59e0b': 'オレンジ',
+};
 const strokeWidths = [1, 2, 4, 8];
 
 export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -267,7 +274,8 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
                     onClick={() => setStrokeColor(c)}
                     className={`dq-color-btn w-10 h-10 ${strokeColor === c ? 'active' : ''}`}
                     style={{ backgroundColor: c, borderColor: strokeColor === c ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
-                    title={c}
+                    title={strokeColorNames[c] || c}
+                    aria-label={strokeColorNames[c] || c}
                   />
                 ))}
               </div>

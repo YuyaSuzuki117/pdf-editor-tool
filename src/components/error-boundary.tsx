@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DqSlime } from './dq-slime';
+import { YuunamaSkeleton } from './dq-characters';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -44,9 +45,10 @@ export class ErrorBoundary extends React.Component<
           }}
         >
           <div className="dq-window p-6 max-w-[380px] w-[90vw]">
-            {/* Slime with message */}
-            <div className="flex justify-center mb-4">
-              <DqSlime size={64} bounce={true}>
+            {/* Characters with message */}
+            <div className="flex items-end justify-center gap-3 mb-4">
+              <YuunamaSkeleton size={48} bounce={false} />
+              <DqSlime size={56} bounce={true}>
                 <span style={{ color: 'var(--ynk-bone)', fontSize: 13 }}>
                   {'\u304F\u3063...\u30D0\u30B0\u306B \u3084\u3089\u308C\u305F...\uFF01'}
                 </span>

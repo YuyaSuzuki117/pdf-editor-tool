@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
-import { YuunamaHero, YuunamaGoblin, YuunamaDragon } from '@/components/dq-characters';
+import { YuunamaHero, YuunamaGoblin, YuunamaDragon, YuunamaSlime, YuunamaSkeleton } from '@/components/dq-characters';
 
 type Phase = 'idle' | 'loading' | 'error';
 
@@ -181,12 +181,14 @@ export default function DqDropZone() {
             ) : (
               <>
                 {/* キャラクター集合 */}
-                <div className="flex items-end gap-2 justify-center">
-                  <YuunamaGoblin size={40} bounce />
-                  <DqSlime size={80} bounce>
+                <div className="flex items-end gap-1 justify-center">
+                  <YuunamaSlime size={32} bounce />
+                  <YuunamaGoblin size={36} bounce />
+                  <DqSlime size={72} bounce>
                     はかいしんさま、あたらしい PDFを ほりだしますか？
                   </DqSlime>
-                  <YuunamaHero size={40} bounce />
+                  <YuunamaSkeleton size={36} bounce />
+                  <YuunamaHero size={32} bounce />
                 </div>
 
                 <button

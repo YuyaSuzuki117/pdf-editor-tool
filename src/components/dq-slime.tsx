@@ -9,6 +9,8 @@ export {
   YuunamaDragon,
   YuunamaGoblin,
   YuunamaMushroomMan,
+  YuunamaSlime,
+  YuunamaSkeleton,
 } from "./dq-characters";
 
 interface DqSlimeProps {

@@ -88,5 +88,8 @@ export async function renderPageToDataURL(
   if (!ctx) return '';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
-  return canvas.toDataURL('image/png');
+  const dataURL = canvas.toDataURL('image/png');
+  canvas.width = 0;
+  canvas.height = 0;
+  return dataURL;
 }

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,11 +41,11 @@ export default function RootLayout({
       </head>
       <body className="antialiased font-['DotGothic16','Noto_Sans_JP',monospace]">
         {children}
-        <script dangerouslySetInnerHTML={{ __html: `
+        <Script id="sw-register" strategy="lazyOnload">{`
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function() {});
           }
-        `}} />
+        `}</Script>
       </body>
     </html>
   );

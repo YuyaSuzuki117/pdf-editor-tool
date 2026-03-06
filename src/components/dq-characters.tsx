@@ -700,3 +700,138 @@ export function YuunamaMushroomMan({ size = 64, bounce = true }: CharacterProps)
     </div>
   );
 }
+
+// ============================================================
+// スライム (Slime) - Classic blue drop-shaped slime
+// ============================================================
+export function YuunamaSlime({ size = 64, bounce = true }: CharacterProps) {
+  return (
+    <div className={bounce ? "dq-bounce" : ""}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 32 32"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ imageRendering: "pixelated" }}
+      >
+        {/* Top */}
+        <rect x="14" y="4" width="4" height="2" fill="#4488cc" />
+        <rect x="12" y="6" width="8" height="2" fill="#5599dd" />
+        <rect x="10" y="8" width="12" height="2" fill="#66aaee" />
+        {/* Body */}
+        <rect x="8" y="10" width="16" height="2" fill="#5599dd" />
+        <rect x="6" y="12" width="20" height="2" fill="#4488cc" />
+        <rect x="6" y="14" width="20" height="2" fill="#4488cc" />
+        {/* Eyes */}
+        <rect x="6" y="16" width="4" height="2" fill="#4488cc" />
+        <rect x="10" y="16" width="2" height="2" fill="#111122" />
+        <rect x="12" y="16" width="4" height="2" fill="#4488cc" />
+        <rect x="16" y="16" width="2" height="2" fill="#111122" />
+        <rect x="18" y="16" width="2" height="2" fill="#111122" />
+        <rect x="20" y="16" width="6" height="2" fill="#4488cc" />
+        <rect x="10" y="16" width="1" height="1" fill="#ffffff" opacity="0.9">
+          <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite" />
+        </rect>
+        <rect x="16" y="16" width="1" height="1" fill="#ffffff" opacity="0.9">
+          <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite" />
+        </rect>
+        {/* Mouth */}
+        <rect x="6" y="18" width="6" height="2" fill="#3377bb" />
+        <rect x="12" y="18" width="4" height="2" fill="#224488" />
+        <rect x="16" y="18" width="6" height="2" fill="#3377bb" />
+        {/* Lower body */}
+        <rect x="8" y="20" width="16" height="2" fill="#3377bb" />
+        <rect x="10" y="22" width="12" height="2" fill="#2266aa" />
+        {/* Highlight */}
+        <rect x="12" y="8" width="2" height="2" fill="#88ccff" opacity="0.6" />
+        <rect x="10" y="10" width="2" height="2" fill="#88ccff" opacity="0.4" />
+        <rect x="14" y="12" width="4" height="2" fill="#77bbff" opacity="0.3">
+          <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3s" repeatCount="indefinite" />
+        </rect>
+        {/* Shadow */}
+        <rect x="8" y="24" width="16" height="2" fill="#0d0804" opacity="0.3" />
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// 骸骨戦士 (Skeleton Warrior) - Bones, sword, shield
+// ============================================================
+export function YuunamaSkeleton({ size = 64, bounce = true }: CharacterProps) {
+  return (
+    <div className={bounce ? "dq-bounce" : ""}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 32 32"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ imageRendering: "pixelated" }}
+      >
+        {/* Helmet */}
+        <rect x="10" y="2" width="8" height="2" fill="#6b6b6b" />
+        <rect x="8" y="4" width="12" height="2" fill="#8b8b8b" />
+        {/* Skull */}
+        <rect x="8" y="6" width="2" height="2" fill="#d0d0d0" />
+        <rect x="10" y="6" width="8" height="2" fill="#f0f0f0" />
+        <rect x="18" y="6" width="2" height="2" fill="#d0d0d0" />
+        {/* Eyes */}
+        <rect x="8" y="8" width="2" height="2" fill="#d0d0d0" />
+        <rect x="10" y="8" width="2" height="2" fill="#220000" />
+        <rect x="12" y="8" width="4" height="2" fill="#e0e0e0" />
+        <rect x="16" y="8" width="2" height="2" fill="#220000" />
+        <rect x="18" y="8" width="2" height="2" fill="#d0d0d0" />
+        <rect x="10" y="8" width="2" height="2" fill="#ff2200" opacity="0.5">
+          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="2s" repeatCount="indefinite" />
+        </rect>
+        <rect x="16" y="8" width="2" height="2" fill="#ff2200" opacity="0.5">
+          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="2s" repeatCount="indefinite" />
+        </rect>
+        {/* Jaw */}
+        <rect x="10" y="10" width="2" height="2" fill="#d0d0d0" />
+        <rect x="12" y="10" width="4" height="2" fill="#1a1a1a" />
+        <rect x="16" y="10" width="2" height="2" fill="#d0d0d0" />
+        {/* Sword right */}
+        <rect x="24" y="2" width="2" height="6" fill="#a0a0a0" />
+        <rect x="22" y="8" width="6" height="2" fill="#8b6914" />
+        {/* Shield left */}
+        <rect x="2" y="12" width="4" height="4" fill="#5c3d2e" />
+        <rect x="3" y="13" width="2" height="2" fill="#7a5a3a" />
+        {/* Ribcage */}
+        <rect x="8" y="12" width="2" height="2" fill="#b0b0b0" />
+        <rect x="10" y="12" width="2" height="2" fill="#d8d8d8" />
+        <rect x="12" y="12" width="2" height="2" fill="#1a1a1a" />
+        <rect x="14" y="12" width="2" height="2" fill="#d8d8d8" />
+        <rect x="16" y="12" width="2" height="2" fill="#1a1a1a" />
+        <rect x="18" y="12" width="2" height="2" fill="#b0b0b0" />
+        {/* Spine */}
+        <rect x="10" y="14" width="2" height="2" fill="#1a1a1a" />
+        <rect x="12" y="14" width="4" height="2" fill="#c0c0c0" />
+        <rect x="16" y="14" width="2" height="2" fill="#1a1a1a" />
+        {/* Arms */}
+        <rect x="20" y="12" width="2" height="2" fill="#c0c0c0" />
+        <rect x="22" y="10" width="2" height="2" fill="#b0b0b0" />
+        <rect x="6" y="12" width="2" height="4" fill="#c0c0c0" />
+        {/* Belt */}
+        <rect x="8" y="16" width="12" height="2" fill="#5c3d2e" />
+        {/* Legs */}
+        <rect x="8" y="18" width="4" height="2" fill="#b0b0b0" />
+        <rect x="16" y="18" width="4" height="2" fill="#b0b0b0" />
+        {/* Boots */}
+        <rect x="6" y="20" width="6" height="2" fill="#4a3020" />
+        <rect x="16" y="20" width="6" height="2" fill="#4a3020" />
+        {/* Ghostly aura */}
+        <rect x="6" y="6" width="2" height="2" fill="#aaccff" opacity="0.15">
+          <animate attributeName="opacity" values="0.05;0.2;0.05" dur="3s" repeatCount="indefinite" />
+        </rect>
+        <rect x="20" y="14" width="2" height="2" fill="#aaccff" opacity="0.15">
+          <animate attributeName="opacity" values="0.1;0.25;0.1" dur="2.5s" repeatCount="indefinite" />
+        </rect>
+        {/* Shadow */}
+        <rect x="6" y="22" width="18" height="2" fill="#0d0804" opacity="0.3" />
+      </svg>
+    </div>
+  );
+}

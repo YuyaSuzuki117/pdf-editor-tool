@@ -213,18 +213,135 @@ export async function addHighlightToPdf(
   return doc.save();
 }
 
+// === バッチ処理: 全アノテーションを1回のload/saveで適用 ===
+export interface BatchAnnotation {
+  type: 'text' | 'draw' | 'highlight' | 'image';
+  pageIndex: number;
+  position: { x: number; y: number };
+  content: string;
+  fontSize?: number;
+  color?: string;
+  fontFamily?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  size?: { width: number; height: number };
+  opacity?: number;
+  imageBytes?: Uint8Array;
+}
+
+export async function applyAllAnnotations(
+  pdfBytes: ArrayBuffer,
+  annotations: BatchAnnotation[],
+  onProgress?: (pct: number) => void,
+): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await getPdfLib();
+  const doc = await PDFDocument.load(pdfBytes);
+  const pages = doc.getPages();
+
+  // 日本語フォントの事前準備（テキストアノテーションがある場合のみ）
+  const hasJapanese = annotations.some(
+    (a) => a.type === 'text' && (a.fontFamily === 'Noto Sans JP' || !a.fontFamily)
+  );
+  let jpFont: Awaited<ReturnType<typeof doc.embedFont>> | null = null;
+  let defaultFont: Awaited<ReturnType<typeof doc.embedFont>> | null = null;
+
+  if (hasJapanese) {
+    try {
+      const fontkit = await getFontkit();
+      doc.registerFontkit(fontkit);
+      const fontBytes = await getJapaneseFont();
+      jpFont = await doc.embedFont(fontBytes, { subset: true });
+    } catch {
+      // fallback
+    }
+  }
+  if (annotations.some((a) => a.type === 'text')) {
+    defaultFont = await doc.embedFont(StandardFonts.Helvetica);
+  }
+
+  const total = annotations.length;
+  for (let i = 0; i < total; i++) {
+    const ann = annotations[i];
+    const page = pages[ann.pageIndex];
+    if (!page) continue;
+    const { height } = page.getSize();
+
+    if (i > 0 && i % 10 === 0) {
+      await new Promise<void>((r) => setTimeout(r, 0));
+    }
+    onProgress?.(Math.round(((i + 1) / total) * 90));
+
+    switch (ann.type) {
+      case 'text': {
+        const useJp = ann.fontFamily === 'Noto Sans JP' || !ann.fontFamily;
+        const font = (useJp && jpFont) ? jpFont : defaultFont!;
+        page.drawText(ann.content, {
+          x: ann.position.x,
+          y: height - ann.position.y - (ann.fontSize || 16),
+          size: ann.fontSize || 16,
+          font,
+          color: hexToRgb(ann.color || '#000000', rgb),
+        });
+        break;
+      }
+      case 'draw': {
+        const points = ann.content.split(/[ML]/).filter(Boolean).map((p) => {
+          const [x, y] = p.trim().split(',').map(Number);
+          return { x, y: height - y };
+        });
+        for (let j = 1; j < points.length; j++) {
+          page.drawLine({
+            start: points[j - 1],
+            end: points[j],
+            thickness: ann.strokeWidth || 2,
+            color: hexToRgb(ann.strokeColor || '#000000', rgb),
+          });
+        }
+        break;
+      }
+      case 'highlight': {
+        page.drawRectangle({
+          x: ann.position.x,
+          y: height - ann.position.y - (ann.size?.height || 0),
+          width: ann.size?.width || 0,
+          height: ann.size?.height || 0,
+          color: hexToRgb(ann.color || '#ffff00', rgb),
+          opacity: ann.opacity ?? 0.35,
+        });
+        break;
+      }
+      case 'image': {
+        if (!ann.imageBytes) break;
+        let image;
+        try {
+          image = await doc.embedPng(ann.imageBytes);
+        } catch {
+          image = await doc.embedJpg(ann.imageBytes);
+        }
+        page.drawImage(image, {
+          x: ann.position.x,
+          y: height - ann.position.y - (ann.size?.height || 0),
+          width: ann.size?.width || 150,
+          height: ann.size?.height || 150,
+        });
+        break;
+      }
+    }
+  }
+
+  onProgress?.(100);
+  return doc.save();
+}
+
 export function savePdfAsBlob(pdfBytes: Uint8Array): Blob {
   return new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
