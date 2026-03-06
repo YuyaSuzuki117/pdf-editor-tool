@@ -116,7 +116,7 @@ export default function AnnotationList() {
                 {/* 削除ボタン */}
                 <button
                   onClick={() => dispatch({ type: 'REMOVE_ANNOTATION', payload: ann.id })}
-                  className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="flex items-center justify-center w-6 h-6 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
                   style={{ color: '#ef4444', flexShrink: 0 }}
                   title="削除"
                   aria-label={`${typeLabels[ann.type]}を削除`}

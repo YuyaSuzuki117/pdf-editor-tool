@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface SlidePanelProps {
   isOpen: boolean;
@@ -11,22 +11,26 @@ interface SlidePanelProps {
   allowInteraction?: boolean;
 }
 
+type PanelSize = 'minimized' | 'compact' | 'expanded';
+
 export default function SlidePanel({ isOpen, onClose, title, children, allowInteraction = false }: SlidePanelProps) {
   const [visible, setVisible] = useState(false);
   const [translateY, setTranslateY] = useState(100);
+  const [panelSize, setPanelSize] = useState<PanelSize>(allowInteraction ? 'compact' : 'expanded');
   const dragStartY = useRef(0);
   const currentY = useRef(0);
 
   useEffect(() => {
     if (isOpen) {
       setVisible(true);
+      setPanelSize(allowInteraction ? 'compact' : 'expanded');
       requestAnimationFrame(() => setTranslateY(0));
     } else {
       setTranslateY(100);
       const timer = setTimeout(() => setVisible(false), 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, allowInteraction]);
 
   // Escapeキーで閉じる
   useEffect(() => {
@@ -61,6 +65,18 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
     currentY.current = 0;
   };
 
+  // ハンドルタップでサイズ切り替え
+  const handleToggleSize = useCallback(() => {
+    setPanelSize((prev) => {
+      if (prev === 'minimized') return 'compact';
+      if (prev === 'compact') return 'expanded';
+      return 'compact';
+    });
+  }, []);
+
+  const maxHeight = panelSize === 'minimized' ? '56px' : panelSize === 'compact' ? '40vh' : '70vh';
+  const contentMaxHeight = panelSize === 'minimized' ? '0px' : panelSize === 'compact' ? '28vh' : '55vh';
+
   if (!visible) return null;
 
   return (
@@ -82,12 +98,14 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
         role="dialog"
         aria-modal={!allowInteraction}
         aria-label={title}
-        className="relative w-full max-h-[70vh] dq-window rounded-t-md rounded-b-none dq-panel-smooth ynk-dungeon-wall"
+        className="relative w-full dq-window rounded-t-md rounded-b-none dq-panel-smooth ynk-dungeon-wall"
         style={{
+          maxHeight,
           transform: `translateY(${translateY}%)`,
           background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',
           borderColor: '#5c4a2e',
           pointerEvents: 'auto',
+          transition: 'max-height 0.25s ease',
         }}
       >
         {/* 石のアーチ装飾 */}
@@ -113,29 +131,34 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
           }}
         />
 
-        {/* 鉄の取っ手風ドラッグハンドル */}
+        {/* ドラッグハンドル + サイズ切り替え */}
         <div
-          className="flex justify-center pt-4 pb-2 cursor-grab"
+          className="flex justify-center items-center pt-3 pb-1 cursor-grab"
           onTouchStart={handleDragStart}
           onTouchMove={handleDragMove}
           onTouchEnd={handleDragEnd}
+          onClick={handleToggleSize}
         >
-          <div
-            style={{
-              width: 60,
-              height: 8,
-              borderRadius: 0,
-              background: 'linear-gradient(180deg, #8b8b8b 0%, #5a5a5a 40%, #3a3a3a 100%)',
-              border: '1px solid #6b6b6b',
-              boxShadow: '0 2px 0 #1a1a1a, inset 0 1px 0 rgba(180,180,180,0.3), 0 -1px 0 #2a2a2a',
-              /* リベット風の点 */
-              backgroundImage: 'radial-gradient(circle at 8px 4px, rgba(180,180,180,0.4) 1.5px, transparent 1.5px), radial-gradient(circle at 52px 4px, rgba(180,180,180,0.4) 1.5px, transparent 1.5px)',
-            }}
-          />
+          <div className="flex flex-col items-center gap-0.5">
+            <div
+              style={{
+                width: 60,
+                height: 6,
+                borderRadius: 3,
+                background: 'linear-gradient(180deg, #8b8b8b 0%, #5a5a5a 40%, #3a3a3a 100%)',
+                border: '1px solid #6b6b6b',
+                boxShadow: '0 1px 0 #1a1a1a, inset 0 1px 0 rgba(180,180,180,0.3)',
+              }}
+            />
+            {/* サイズインジケーター */}
+            <span style={{ fontSize: 8, color: '#8b6914', lineHeight: 1 }}>
+              {panelSize === 'minimized' ? '▲' : panelSize === 'compact' ? '▲▼' : '▼'}
+            </span>
+          </div>
         </div>
 
-        <div className="px-4 pb-2 flex items-center justify-between">
-          <h3 className="dq-title text-lg">{title}</h3>
+        <div className="px-3 pb-1 flex items-center justify-between">
+          <h3 className="dq-title text-sm">{title}</h3>
           <button
             onClick={onClose}
             style={{
@@ -143,8 +166,8 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
               border: '2px solid #8b6914',
               borderRadius: '0',
               color: '#c8a060',
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -158,7 +181,15 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
             ✕
           </button>
         </div>
-        <div className="px-4 pb-6 overflow-y-auto max-h-[55vh]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
+        <div
+          className="px-3 overflow-y-auto"
+          style={{
+            maxHeight: contentMaxHeight,
+            paddingBottom: panelSize === 'minimized' ? 0 : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+            transition: 'max-height 0.25s ease',
+            overflow: panelSize === 'minimized' ? 'hidden' : 'auto',
+          }}
+        >
           {children}
         </div>
       </div>

@@ -35,7 +35,6 @@ const AnnotationItem = React.memo(function AnnotationItem({
   const offsetRef = useRef({ x: 0, y: 0 });
 
   const startDrag = useCallback((clientX: number, clientY: number) => {
-    if (toolMode !== 'view') return;
     dragDistRef.current = 0;
     isDraggingRef.current = false;
     setDragState({
@@ -45,7 +44,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
       offsetX: 0,
       offsetY: 0,
     });
-  }, [toolMode]);
+  }, []);
 
   useEffect(() => {
     if (!dragState.dragging) return;
@@ -110,22 +109,19 @@ const AnnotationItem = React.memo(function AnnotationItem({
 
   // ダブルクリック/ダブルタップで再編集
   const handleDoubleClick = useCallback(() => {
-    if (toolMode !== 'view') return;
     if (ann.type !== 'text') return;
     window.dispatchEvent(new CustomEvent('edit-annotation', { detail: { annotation: ann } }));
-  }, [toolMode, ann]);
+  }, [ann]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (toolMode !== 'view') return;
     e.preventDefault();
     startDrag(e.clientX, e.clientY);
-  }, [toolMode, startDrag]);
+  }, [startDrag]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (toolMode !== 'view') return;
     if (e.touches.length !== 1) return;
     startDrag(e.touches[0].clientX, e.touches[0].clientY);
-  }, [toolMode, startDrag]);
+  }, [startDrag]);
 
   const draggingStyle: React.CSSProperties = isDraggingRef.current && dragState.dragging
     ? { opacity: 0.7, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 50 }
@@ -149,7 +145,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           lineHeight: 1.2,
           whiteSpace: 'pre-wrap',
           textShadow: '0 0 2px rgba(255,255,255,0.5)',
-          cursor: toolMode === 'view' ? 'grab' : undefined,
+          cursor: 'grab',
           userSelect: 'none',
           transform: dragTransform,
           transition: dragState.dragging ? 'none' : 'transform 0.1s',
@@ -160,7 +156,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
         onDoubleClick={handleDoubleClick}
       >
         {ann.content}
-        {toolMode === 'view' && (
+        {(
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -168,7 +164,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-3 -right-5 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-5 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
             aria-label="削除"
           >
@@ -202,7 +198,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           top: minY - pad,
           width: svgWidth,
           height: svgHeight,
-          cursor: toolMode === 'view' ? 'grab' : undefined,
+          cursor: 'grab',
           userSelect: 'none',
           transform: dragTransform,
           transition: dragState.dragging ? 'none' : 'transform 0.1s',
@@ -221,7 +217,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
             strokeLinejoin="round"
           />
         </svg>
-        {toolMode === 'view' && (
+        {(
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -229,7 +225,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
             aria-label="削除"
           >
@@ -252,7 +248,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           backgroundColor: style.color,
           opacity: dragState.dragging && isDraggingRef.current ? 0.7 * style.opacity : style.opacity,
           borderRadius: 2,
-          cursor: toolMode === 'view' ? 'grab' : undefined,
+          cursor: 'grab',
           userSelect: 'none',
           transform: dragTransform,
           transition: dragState.dragging ? 'none' : 'transform 0.1s',
@@ -261,7 +257,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
       >
-        {toolMode === 'view' && (
+        {(
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -269,7 +265,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto', opacity: 1 }}
             aria-label="削除"
           >
@@ -291,7 +287,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           top: ann.position.y,
           width: imgWidth,
           height: imgHeight,
-          cursor: toolMode === 'view' ? 'grab' : undefined,
+          cursor: 'grab',
           userSelect: 'none',
           transform: dragTransform,
           transition: dragState.dragging ? 'none' : 'transform 0.1s',
@@ -306,7 +302,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           alt="スタンプ・画像アノテーション"
           style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
         />
-        {toolMode === 'view' && (
+        {(
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -314,7 +310,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
             style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
             aria-label="削除"
           >
