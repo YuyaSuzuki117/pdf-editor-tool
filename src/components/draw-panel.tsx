@@ -213,7 +213,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
       {isOpen && (
         <canvas
           ref={canvasRef}
-          className="fixed z-30 touch-none"
+          className="fixed z-[45] touch-none"
           role="img"
           aria-label="フリーハンド描画キャンバス"
           onTouchStart={handleTouchStart}
@@ -225,7 +225,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
           onMouseLeave={handleMouseLeave}
         />
       )}
-      <SlidePanel isOpen={isOpen} onClose={handleCloseWithCheck} title="フリーハンド描画">
+      <SlidePanel isOpen={isOpen} onClose={handleCloseWithCheck} title="フリーハンド描画" allowInteraction>
         <div className="space-y-4">
           {/* ストローク数表示 */}
           {strokeCount > 0 && (

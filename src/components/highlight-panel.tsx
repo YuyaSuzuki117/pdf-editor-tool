@@ -118,7 +118,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
       {isOpen && (
         <div
           ref={overlayRef}
-          className="fixed z-30 touch-none cursor-crosshair"
+          className="fixed z-[45] touch-none cursor-crosshair"
           style={{
             left: overlayBounds.left,
             top: overlayBounds.top,
@@ -182,7 +182,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
           )}
         </div>
       )}
-      <SlidePanel isOpen={isOpen} onClose={onClose} title="マーカー">
+      <SlidePanel isOpen={isOpen} onClose={onClose} title="マーカー" allowInteraction>
         <div className="space-y-4">
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-sm">マーカーを引く範囲をドラッグで選択</p>

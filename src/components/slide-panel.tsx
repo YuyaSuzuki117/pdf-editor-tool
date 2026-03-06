@@ -7,9 +7,11 @@ interface SlidePanelProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** trueならオーバーレイをクリック透過にしてPDFとのインタラクションを許可 */
+  allowInteraction?: boolean;
 }
 
-export default function SlidePanel({ isOpen, onClose, title, children }: SlidePanelProps) {
+export default function SlidePanel({ isOpen, onClose, title, children, allowInteraction = false }: SlidePanelProps) {
   const [visible, setVisible] = useState(false);
   const [translateY, setTranslateY] = useState(100);
   const dragStartY = useRef(0);
@@ -65,8 +67,12 @@ export default function SlidePanel({ isOpen, onClose, title, children }: SlidePa
     <div className="fixed inset-0 z-50 flex items-end">
       <div
         className="absolute inset-0 dq-overlay transition-opacity duration-300"
-        style={{ opacity: translateY === 0 ? 1 : 0.5, background: 'rgba(5, 4, 2, 0.85)' }}
-        onClick={onClose}
+        style={{
+          opacity: translateY === 0 ? (allowInteraction ? 0.3 : 1) : 0.5,
+          background: allowInteraction ? 'rgba(5, 4, 2, 0.25)' : 'rgba(5, 4, 2, 0.85)',
+          pointerEvents: allowInteraction ? 'none' : 'auto',
+        }}
+        onClick={allowInteraction ? undefined : onClose}
       />
       <div
         role="dialog"

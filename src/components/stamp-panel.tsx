@@ -281,7 +281,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
   })();
 
   return (
-    <SlidePanel isOpen={isOpen} onClose={onClose} title="スタンプ・署名">
+    <SlidePanel isOpen={isOpen} onClose={onClose} title="スタンプ・署名" allowInteraction>
       <div className="space-y-4">
         {/* タブ切り替え */}
         <div className="flex gap-1">

@@ -118,7 +118,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
   }, [editingId, onClose]);
 
   return (
-    <SlidePanel isOpen={isOpen} onClose={handleCancel} title={editingId ? 'テキスト編集' : 'テキスト追加'}>
+    <SlidePanel isOpen={isOpen} onClose={handleCancel} title={editingId ? 'テキスト編集' : 'テキスト追加'} allowInteraction>
       <div className="space-y-4">
         {editingId && (
           <div
