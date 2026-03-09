@@ -25,10 +25,9 @@ const colors = [
 export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [text, setText] = useState('');
-  const settings = loadSettings();
-  const [fontSize, setFontSize] = useState(settings.textFontSize || 16);
-  const [fontFamily, setFontFamily] = useState(settings.textFontFamily || 'Noto Sans JP');
-  const [color, setColor] = useState(settings.textColor || '#000000');
+  const [fontSize, setFontSize] = useState(() => loadSettings().textFontSize || 16);
+  const [fontFamily, setFontFamily] = useState(() => loadSettings().textFontFamily || 'Noto Sans JP');
+  const [color, setColor] = useState(() => loadSettings().textColor || '#000000');
   const [bold, setBold] = useState(false);
   const [italic, setItalic] = useState(false);
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);

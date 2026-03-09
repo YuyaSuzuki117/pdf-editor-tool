@@ -9,8 +9,10 @@ const shortcuts = [
   { keys: 'Ctrl+F', desc: 'テキスト検索' },
   { keys: 'Escape', desc: 'ツールモード解除' },
   { keys: '1-8', desc: 'ツール切替 (表示/テキスト/描画/図形/マーカー/画像/ページ/保存)' },
-  { keys: '\u2190 \u2192', desc: 'ページ移動（表示モード時）' },
+  { keys: '\u2190 \u2192', desc: 'ページ移動' },
   { keys: 'Ctrl+Wheel', desc: 'ズーム' },
+  { keys: 'Ctrl + / -', desc: 'ズームイン/アウト' },
+  { keys: 'Ctrl+0', desc: 'ズームリセット (100%)' },
   { keys: '?', desc: 'このヘルプを表示' },
 ];
 
