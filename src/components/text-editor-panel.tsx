@@ -7,10 +7,12 @@ import { loadSettings, saveSettings } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation, TextStyle } from '@/types/pdf';
 
-const fontSizes = [12, 16, 20, 24, 32];
+const fontSizes = [10, 12, 16, 20, 24, 32, 48];
 const fontFamilies = [
   { label: 'Noto Sans JP', value: 'Noto Sans JP' },
   { label: 'Helvetica', value: 'Helvetica' },
+  { label: 'DotGothic16', value: 'DotGothic16' },
+  { label: 'Courier', value: 'Courier' },
 ];
 const colors = [
   { label: '黒', value: '#000000' },
@@ -27,9 +29,10 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
   const [fontSize, setFontSize] = useState(settings.textFontSize || 16);
   const [fontFamily, setFontFamily] = useState(settings.textFontFamily || 'Noto Sans JP');
   const [color, setColor] = useState(settings.textColor || '#000000');
+  const [bold, setBold] = useState(false);
+  const [italic, setItalic] = useState(false);
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);
   const [tapRenderScale, setTapRenderScale] = useState(1);
-  // 再編集モード用
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,6 +55,8 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
       setFontSize(style.fontSize);
       setColor(style.color);
       setFontFamily(style.fontFamily || 'Noto Sans JP');
+      setBold(!!style.bold);
+      setItalic(!!style.italic);
       setTapPos(annotation.position);
       setTapRenderScale(annotation.renderScale || 1);
       setEditingId(annotation.id);
@@ -86,7 +91,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
           updates: {
             content: text,
             position: tapPos,
-            style: { fontSize, color, fontFamily },
+            style: { fontSize, color, fontFamily, bold, italic },
             renderScale: tapRenderScale,
           },
         },
@@ -216,6 +221,32 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
             ))}
           </div>
         </div>
+        {/* 太字・斜体 */}
+        <div>
+          <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>スタイル</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setBold(!bold)}
+              className="dq-btn-small flex items-center justify-center min-h-[44px] min-w-[60px]"
+              style={bold
+                ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
+                : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
+              }
+            >
+              <span style={{ fontWeight: 'bold', fontSize: 16 }}>B</span>
+            </button>
+            <button
+              onClick={() => setItalic(!italic)}
+              className="dq-btn-small flex items-center justify-center min-h-[44px] min-w-[60px]"
+              style={italic
+                ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
+                : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
+              }
+            >
+              <span style={{ fontStyle: 'italic', fontSize: 16 }}>I</span>
+            </button>
+          </div>
+        </div>
         <div>
           <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>文字の色</p>
           <div className="flex gap-3">
@@ -236,7 +267,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
         {text.trim() && (
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-xs mb-1" style={{ color: 'var(--ynk-gold)' }}>プレビュー</p>
-            <p className="dq-text" style={{ fontSize: `${fontSize}px`, color }}>{text}</p>
+            <p className="dq-text" style={{ fontSize: `${fontSize}px`, color, fontFamily, fontWeight: bold ? 'bold' : 'normal', fontStyle: italic ? 'italic' : 'normal' }}>{text}</p>
           </div>
         )}
         <button

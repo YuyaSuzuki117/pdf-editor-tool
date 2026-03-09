@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus } from 'lucide-react';
+import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus, Copy, FileText, Scissors, Merge } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
+import { showDqToast } from '@/lib/toast';
 import { YuunamaLilith } from '@/components/dq-characters';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
-import { rotatePage, deletePage, mergePdfs, reorderPages } from '@/lib/pdf-editor';
+import { rotatePage, deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
 import { dqConfirm } from '@/components/dq-confirm';
 
 interface PageThumb {
@@ -13,10 +14,15 @@ interface PageThumb {
   dataURL: string;
 }
 
+type TabMode = 'pages' | 'merge' | 'split';
+
 export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [thumbnails, setThumbnails] = useState<PageThumb[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<TabMode>('pages');
+  const [mergeFiles, setMergeFiles] = useState<{ name: string; data: ArrayBuffer; pages: number }[]>([]);
+  const [splitRange, setSplitRange] = useState('');
 
   const generateThumbnails = useCallback(async () => {
     if (!state.pdfData) return;
@@ -129,6 +135,84 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     generateThumbnails();
   };
 
+  const handleInsertBlank = async (afterIndex: number) => {
+    if (!state.pdfData) return;
+    const newBytes = await insertBlankPage(state.pdfData, afterIndex);
+    const doc = await loadDocumentFromBytes(newBytes.buffer as ArrayBuffer);
+    const numPages = doc.numPages;
+    doc.destroy();
+    dispatch({ type: 'UPDATE_PDF_DATA', payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages } });
+    showDqToast('空白ページを挿入しました', 'success');
+    generateThumbnails();
+  };
+
+  const handleDuplicate = async (pageIndex: number) => {
+    if (!state.pdfData) return;
+    const newBytes = await duplicatePage(state.pdfData, pageIndex);
+    const doc = await loadDocumentFromBytes(newBytes.buffer as ArrayBuffer);
+    const numPages = doc.numPages;
+    doc.destroy();
+    dispatch({ type: 'UPDATE_PDF_DATA', payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages } });
+    showDqToast('ページを複製しました', 'success');
+    generateThumbnails();
+  };
+
+  const handleAddMergeFiles = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files) return;
+      const newFiles: typeof mergeFiles = [];
+      for (const file of Array.from(files)) {
+        const data = await file.arrayBuffer();
+        const doc = await loadDocumentFromBytes(data);
+        newFiles.push({ name: file.name, data, pages: doc.numPages });
+        doc.destroy();
+      }
+      setMergeFiles(prev => [...prev, ...newFiles]);
+    };
+    input.click();
+  };
+
+  const handleMerge = async () => {
+    if (mergeFiles.length === 0) return;
+    const allPdfs = state.pdfData ? [state.pdfData, ...mergeFiles.map(f => f.data)] : mergeFiles.map(f => f.data);
+    const merged = await mergePdfs(allPdfs);
+    const blob = savePdfAsBlob(merged);
+    downloadBlob(blob, 'merged.pdf');
+    showDqToast('結合PDFを保存しました', 'success');
+    setMergeFiles([]);
+  };
+
+  const handleSplit = async () => {
+    if (!state.pdfData || !splitRange.trim()) return;
+    // Parse range: "1-3, 5, 7-10"
+    const indices: number[] = [];
+    for (const part of splitRange.split(',')) {
+      const trimmed = part.trim();
+      const match = trimmed.match(/^(\d+)(?:-(\d+))?$/);
+      if (match) {
+        const start = parseInt(match[1]) - 1;
+        const end = match[2] ? parseInt(match[2]) - 1 : start;
+        for (let i = start; i <= end && i < state.numPages; i++) {
+          if (i >= 0 && !indices.includes(i)) indices.push(i);
+        }
+      }
+    }
+    if (indices.length === 0) {
+      showDqToast('有効なページ番号を入力してください', 'error');
+      return;
+    }
+    indices.sort((a, b) => a - b);
+    const result = await splitPdf(state.pdfData, indices);
+    const blob = savePdfAsBlob(result);
+    downloadBlob(blob, `split_p${indices.map(i => i + 1).join('-')}.pdf`);
+    showDqToast(`${indices.length}ページを抽出しました`, 'success');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -139,31 +223,87 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
         style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', flexShrink: 0 }}
       >
         <h2 className="dq-title text-lg">ページ管理</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
-            {state.numPages}ページ
-          </span>
-          <button
-            onClick={handleInsertPDF}
-            className="dq-btn-small flex items-center gap-1 justify-center"
-            title="PDFを追加"
-            style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', padding: '4px 10px' }}
-          >
-            <FilePlus size={16} />
-            <span className="text-xs hidden sm:inline">追加</span>
-          </button>
-          <button
-            onClick={onClose}
-            className="dq-close-btn"
-            style={{ background: 'linear-gradient(180deg, #4a4a4a 0%, #333 100%)', border: '2px solid #7a5540', borderRadius: '50%', color: '#d4a017', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
-          >
+        <div className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>{state.numPages}p</span>
+          <button onClick={onClose} className="dq-close-btn" style={{ background: 'linear-gradient(180deg, #4a4a4a 0%, #333 100%)', border: '2px solid #7a5540', borderRadius: '50%', color: '#d4a017', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
             <X size={20} />
           </button>
         </div>
       </div>
 
-      {/* サムネイルグリッド */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+      {/* タブ */}
+      <div className="flex gap-1 px-3 py-2" style={{ background: 'rgba(0,0,0,0.3)' }}>
+        {([['pages', 'ページ'], ['merge', '結合'], ['split', '分割']] as [TabMode, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className="dq-btn-small flex-1 text-center min-h-[36px]"
+            style={tab === key
+              ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
+              : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 結合タブ */}
+      {tab === 'merge' && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
+            <p className="dq-text text-sm">複数のPDFファイルを1つに結合します</p>
+          </div>
+          <button onClick={handleAddMergeFiles} className="dq-btn w-full flex items-center justify-center gap-2">
+            <FilePlus size={18} /> PDFファイルを追加
+          </button>
+          {mergeFiles.length > 0 && (
+            <div className="space-y-2">
+              {state.pdfData && (
+                <div className="flex items-center gap-2 px-3 py-2" style={{ background: 'rgba(212,160,23,0.1)', border: '1px solid var(--ynk-gold)', borderRadius: 4 }}>
+                  <FileText size={16} style={{ color: 'var(--ynk-gold)' }} />
+                  <span className="dq-text text-sm flex-1">{state.file?.name || '現在のPDF'} ({state.numPages}p)</span>
+                </div>
+              )}
+              {mergeFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4 }}>
+                  <FileText size={16} style={{ color: 'var(--ynk-bone)' }} />
+                  <span className="dq-text text-sm flex-1">{f.name} ({f.pages}p)</span>
+                  <button onClick={() => setMergeFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ color: '#ef4444' }}><X size={16} /></button>
+                </div>
+              ))}
+              <button onClick={handleMerge} className="dq-btn w-full flex items-center justify-center gap-2">
+                <Merge size={18} /> 結合して保存
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 分割タブ */}
+      {tab === 'split' && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
+            <p className="dq-text text-sm">ページ番号を指定してPDFを分割・抽出します</p>
+            <p className="dq-text text-xs mt-1" style={{ opacity: 0.7 }}>例: 1-3, 5, 7-10</p>
+          </div>
+          <input
+            value={splitRange}
+            onChange={(e) => setSplitRange(e.target.value)}
+            placeholder="ページ番号 (例: 1-3, 5, 7-10)"
+            className="dq-input w-full"
+          />
+          <p className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
+            総ページ数: {state.numPages}
+          </p>
+          <button onClick={handleSplit} disabled={!splitRange.trim()} className="dq-btn w-full flex items-center justify-center gap-2">
+            <Scissors size={18} /> 抽出して保存
+          </button>
+        </div>
+      )}
+
+      {/* ページタブ - サムネイルグリッド */}
+      {tab === 'pages' && <div className="flex-1 overflow-y-auto p-3 sm:p-4">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <YuunamaLilith size={56} bounce />
@@ -239,11 +379,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         className="dq-btn-small flex items-center justify-center"
                         title="前へ移動"
                         disabled={isFirst}
-                        style={{
-                          minHeight: 28, minWidth: 28, padding: 3,
-                          opacity: isFirst ? 0.3 : 1,
-                          cursor: isFirst ? 'not-allowed' : 'pointer',
-                        }}
+                        style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isFirst ? 0.3 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
                       >
                         <ChevronUp size={13} />
                       </button>
@@ -252,13 +388,25 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         className="dq-btn-small flex items-center justify-center"
                         title="後へ移動"
                         disabled={isLast}
-                        style={{
-                          minHeight: 28, minWidth: 28, padding: 3,
-                          opacity: isLast ? 0.3 : 1,
-                          cursor: isLast ? 'not-allowed' : 'pointer',
-                        }}
+                        style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isLast ? 0.3 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
                       >
                         <ChevronDown size={13} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDuplicate(thumb.index); }}
+                        className="dq-btn-small flex items-center justify-center"
+                        title="複製"
+                        style={{ minHeight: 28, minWidth: 28, padding: 3 }}
+                      >
+                        <Copy size={13} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleInsertBlank(thumb.index); }}
+                        className="dq-btn-small flex items-center justify-center"
+                        title="空白ページ挿入"
+                        style={{ minHeight: 28, minWidth: 28, padding: 3, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
+                      >
+                        <FilePlus size={13} />
                       </button>
                     </div>
                   )}
@@ -267,7 +415,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
             })}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

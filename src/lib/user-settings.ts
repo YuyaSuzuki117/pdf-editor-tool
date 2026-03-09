@@ -1,6 +1,5 @@
 /**
  * ユーザー設定をlocalStorageに保存・読み込み
- * テキストのフォントサイズ・色、描画の色・太さなどを記憶
  */
 
 const SETTINGS_KEY = 'pdf-editor-settings';
@@ -13,6 +12,11 @@ export interface UserSettings {
   drawWidth?: number;
   highlightColor?: string;
   stampSizeIdx?: number;
+  shapeType?: string;
+  shapeStrokeColor?: string;
+  shapeStrokeWidth?: number;
+  shapeFilled?: boolean;
+  highlightMode?: string;
 }
 
 const defaults: UserSettings = {
@@ -23,6 +27,11 @@ const defaults: UserSettings = {
   drawWidth: 2,
   highlightColor: '#fde047',
   stampSizeIdx: 1,
+  shapeType: 'rectangle',
+  shapeStrokeColor: '#ef4444',
+  shapeStrokeWidth: 2,
+  shapeFilled: false,
+  highlightMode: 'highlight',
 };
 
 export function loadSettings(): UserSettings {

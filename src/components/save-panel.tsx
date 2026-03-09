@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { FileDown, Image } from 'lucide-react';
+import { FileDown, Image, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import {
   applyAllAnnotations,
+  addWatermark,
+  setMetadata,
   savePdfAsBlob,
   downloadBlob,
 } from '@/lib/pdf-editor';
@@ -13,7 +15,7 @@ import type { BatchAnnotation } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
 import { DqSlime } from '@/components/dq-slime';
 import { YuunamaMushroomMan } from '@/components/dq-characters';
-import type { TextStyle, DrawStyle, HighlightStyle } from '@/types/pdf';
+import type { TextStyle, DrawStyle, HighlightStyle, ShapeStyle } from '@/types/pdf';
 
 export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
@@ -21,7 +23,17 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
 
-  // パネルを開いた時に既存ファイル名を自動入力
+  // ウォーターマーク設定
+  const [showWatermark, setShowWatermark] = useState(false);
+  const [watermarkText, setWatermarkText] = useState('');
+  const [watermarkOpacity, setWatermarkOpacity] = useState(0.2);
+  const [watermarkSize, setWatermarkSize] = useState(48);
+
+  // メタデータ
+  const [showMeta, setShowMeta] = useState(false);
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaAuthor, setMetaAuthor] = useState('');
+
   useEffect(() => {
     if (isOpen && state.file?.name) {
       const baseName = state.file.name.replace(/\.pdf$/i, '');
@@ -37,7 +49,6 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const applyAnnotations = useCallback(async (): Promise<Uint8Array> => {
     if (!state.pdfData) throw new Error('PDFデータがありません');
 
-    // 全アノテーションをBatchAnnotation形式に変換
     const batch: BatchAnnotation[] = state.annotations.map((ann) => {
       const scale = ann.renderScale || 1;
       const pageIndex = ann.page - 1;
@@ -53,6 +64,8 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             fontSize: style.fontSize,
             color: style.color,
             fontFamily: style.fontFamily || 'Noto Sans JP',
+            bold: style.bold,
+            italic: style.italic,
           };
         }
         case 'draw': {
@@ -84,6 +97,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             color: style.color,
             opacity: style.opacity,
             size: { width: style.width / scale, height: style.height / scale },
+            markupMode: style.markupMode || 'highlight',
           };
         }
         case 'image': {
@@ -106,10 +120,38 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             },
           };
         }
+        case 'shape': {
+          const style = ann.style as ShapeStyle;
+          let shapeData;
+          try { shapeData = JSON.parse(ann.content); } catch { shapeData = null; }
+          return {
+            type: 'shape' as const,
+            pageIndex,
+            position: { x: ann.position.x / scale, y: ann.position.y / scale },
+            content: '',
+            strokeColor: style.strokeColor,
+            strokeWidth: style.strokeWidth / scale,
+            shapeData: shapeData ? {
+              shapeType: shapeData.shapeType,
+              x1: shapeData.x1 / scale,
+              y1: shapeData.y1 / scale,
+              x2: shapeData.x2 / scale,
+              y2: shapeData.y2 / scale,
+              filled: shapeData.filled,
+              fillColor: shapeData.fillColor,
+            } : undefined,
+          };
+        }
+        case 'note':
+          return {
+            type: 'note' as const,
+            pageIndex,
+            position: { x: ann.position.x / scale, y: ann.position.y / scale },
+            content: ann.content,
+          };
       }
     });
 
-    // 1回のPDFDocument.load/saveで全アノテーションを適用
     return applyAllAnnotations(state.pdfData, batch, setSaveProgress);
   }, [state.pdfData, state.annotations]);
 
@@ -117,7 +159,22 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     setSaving(true);
     setSaveProgress(0);
     try {
-      const pdfBytes = await applyAnnotations();
+      let pdfBytes = await applyAnnotations();
+
+      // ウォーターマーク
+      if (watermarkText.trim()) {
+        pdfBytes = await addWatermark(
+          pdfBytes.buffer as ArrayBuffer,
+          watermarkText.trim(),
+          { opacity: watermarkOpacity, fontSize: watermarkSize }
+        );
+      }
+
+      // メタデータ
+      if (metaTitle.trim() || metaAuthor.trim()) {
+        pdfBytes = await setMetadata(pdfBytes, { title: metaTitle.trim() || undefined, author: metaAuthor.trim() || undefined });
+      }
+
       const blob = savePdfAsBlob(pdfBytes);
       downloadBlob(blob, getFilename());
       dispatch({ type: 'SET_MODIFIED', payload: false });
@@ -136,20 +193,13 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     if (!canvas) return;
     setSaving(true);
     try {
-      // 新しいcanvasを作成し、PDFキャンバスの上にアノテーションを合成する
       const outCanvas = document.createElement('canvas');
       outCanvas.width = canvas.width;
       outCanvas.height = canvas.height;
       const ctx = outCanvas.getContext('2d')!;
-
-      // 元のPDFキャンバスを描画
       ctx.drawImage(canvas, 0, 0);
 
-      // 現在のページのアノテーションを描画
-      const pageAnnotations = state.annotations.filter(
-        (a) => a.page === state.currentPage
-      );
-
+      const pageAnnotations = state.annotations.filter((a) => a.page === state.currentPage);
       for (const ann of pageAnnotations) {
         if (ann.type === 'highlight') {
           const style = ann.style as HighlightStyle;
@@ -160,13 +210,10 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           ctx.restore();
         } else if (ann.type === 'draw') {
           const style = ann.style as DrawStyle;
-          const points = ann.content
-            .split(/[ML]/)
-            .filter(Boolean)
-            .map((p) => {
-              const [x, y] = p.trim().split(',').map(Number);
-              return { x, y };
-            });
+          const points = ann.content.split(/[ML]/).filter(Boolean).map((p) => {
+            const [x, y] = p.trim().split(',').map(Number);
+            return { x, y };
+          });
           if (points.length >= 2) {
             ctx.save();
             ctx.strokeStyle = style.strokeColor;
@@ -175,28 +222,22 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             ctx.lineJoin = 'round';
             ctx.beginPath();
             ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) {
-              ctx.lineTo(points[i].x, points[i].y);
-            }
+            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
             ctx.stroke();
             ctx.restore();
           }
         } else if (ann.type === 'text') {
           const style = ann.style as TextStyle;
-          const renderScale = canvas.dataset.renderScale
-            ? parseFloat(canvas.dataset.renderScale)
-            : 1;
+          const renderScale = canvas.dataset.renderScale ? parseFloat(canvas.dataset.renderScale) : 1;
           ctx.save();
           ctx.fillStyle = style.color;
           const scaledSize = style.fontSize * renderScale;
           const family = style.fontFamily || 'Helvetica, Arial, sans-serif';
-          ctx.font = `${scaledSize}px ${family}`;
+          ctx.font = `${style.bold ? 'bold ' : ''}${style.italic ? 'italic ' : ''}${scaledSize}px ${family}`;
           ctx.textBaseline = 'top';
-          // canvasの描画座標はdisplay座標 * devicePixelRatio相当のスケール
           const scaleRatio = canvas.width / canvas.offsetWidth;
           const x = ann.position.x * scaleRatio;
           const y = ann.position.y * scaleRatio;
-          // 改行対応
           const lines = ann.content.split('\n');
           for (let i = 0; i < lines.length; i++) {
             ctx.fillText(lines[i], x, y + i * scaledSize * scaleRatio * 1.2);
@@ -210,13 +251,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           await new Promise<void>((resolve) => {
             const img = new window.Image();
             img.onload = () => {
-              ctx.drawImage(
-                img,
-                ann.position.x * scaleRatio,
-                ann.position.y * scaleRatio,
-                imgWidth * scaleRatio,
-                imgHeight * scaleRatio
-              );
+              ctx.drawImage(img, ann.position.x * scaleRatio, ann.position.y * scaleRatio, imgWidth * scaleRatio, imgHeight * scaleRatio);
               resolve();
             };
             img.onerror = () => resolve();
@@ -237,11 +272,10 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   };
 
-  // アノテーション内訳を計算
   const annotationSummary = (() => {
     const counts: Record<string, number> = {};
     for (const ann of state.annotations) {
-      const label = ann.type === 'text' ? 'テキスト' : ann.type === 'draw' ? '描画' : ann.type === 'highlight' ? 'マーカー' : '画像';
+      const label = ann.type === 'text' ? 'テキスト' : ann.type === 'draw' ? '描画' : ann.type === 'highlight' ? 'マーカー' : ann.type === 'shape' ? '図形' : ann.type === 'note' ? '付箋' : '画像';
       counts[label] = (counts[label] || 0) + 1;
     }
     return Object.entries(counts).map(([label, count]) => `${label}${count}件`).join('、');
@@ -250,7 +284,6 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   return (
     <SlidePanel isOpen={isOpen} onClose={onClose} title="保存・書き出し">
       <div className="space-y-4">
-        {/* アノテーション内訳 or 編集なし表示 */}
         {state.annotations.length > 0 ? (
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--ynk-gold)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
@@ -265,20 +298,77 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             </p>
           </div>
         )}
+
+        {state.pdfData && (
+          <div className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
+            ファイルサイズ: {(state.pdfData.byteLength / 1024).toFixed(0)} KB ({state.numPages}ページ)
+          </div>
+        )}
+
         {state.isModified && (
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--ynk-gold)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>未保存の変更があります</p>
           </div>
         )}
+
         <div>
           <label className="dq-text text-sm block mb-1" style={{ color: 'var(--ynk-gold)' }}>ファイル名</label>
-          <input
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-            placeholder={state.file?.name?.replace('.pdf', '') || 'document'}
-            className="dq-input w-full"
-          />
+          <input value={filename} onChange={(e) => setFilename(e.target.value)} placeholder={state.file?.name?.replace('.pdf', '') || 'document'} className="dq-input w-full" />
         </div>
+
+        {/* ウォーターマーク */}
+        <button
+          onClick={() => setShowWatermark(!showWatermark)}
+          className="w-full flex items-center justify-between px-3 py-2"
+          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+        >
+          <span className="dq-text text-sm">ウォーターマーク</span>
+          {showWatermark ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        {showWatermark && (
+          <div className="space-y-2 pl-2" style={{ borderLeft: '2px solid var(--window-border)' }}>
+            <input
+              value={watermarkText}
+              onChange={(e) => setWatermarkText(e.target.value)}
+              placeholder="例: CONFIDENTIAL, 社外秘, DRAFT"
+              className="dq-input w-full text-sm"
+              style={{ padding: '6px 10px' }}
+            />
+            <div className="flex items-center gap-2">
+              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>透明度:</span>
+              <input type="range" min={5} max={50} value={watermarkOpacity * 100} onChange={(e) => setWatermarkOpacity(Number(e.target.value) / 100)} style={{ accentColor: '#d4a017', flex: 1 }} />
+              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', minWidth: 32 }}>{Math.round(watermarkOpacity * 100)}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>サイズ:</span>
+              <input type="range" min={20} max={100} value={watermarkSize} onChange={(e) => setWatermarkSize(Number(e.target.value))} style={{ accentColor: '#d4a017', flex: 1 }} />
+              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', minWidth: 32 }}>{watermarkSize}pt</span>
+            </div>
+          </div>
+        )}
+
+        {/* メタデータ */}
+        <button
+          onClick={() => setShowMeta(!showMeta)}
+          className="w-full flex items-center justify-between px-3 py-2"
+          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+        >
+          <span className="dq-text text-sm">メタデータ</span>
+          {showMeta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        {showMeta && (
+          <div className="space-y-2 pl-2" style={{ borderLeft: '2px solid var(--window-border)' }}>
+            <div>
+              <label className="dq-text text-xs block mb-1" style={{ color: 'var(--ynk-bone)' }}>タイトル</label>
+              <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder="PDF タイトル" className="dq-input w-full text-sm" style={{ padding: '6px 10px' }} />
+            </div>
+            <div>
+              <label className="dq-text text-xs block mb-1" style={{ color: 'var(--ynk-bone)' }}>作成者</label>
+              <input value={metaAuthor} onChange={(e) => setMetaAuthor(e.target.value)} placeholder="作成者名" className="dq-input w-full text-sm" style={{ padding: '6px 10px' }} />
+            </div>
+          </div>
+        )}
+
         {saving && (
           <div>
             <div className="flex justify-between mb-1">
@@ -296,16 +386,9 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             </div>
           </div>
         )}
-        <button
-          onClick={handleSavePDF}
-          disabled={saving}
-          className="dq-btn w-full flex items-center justify-center gap-2"
-        >
-          {saving ? (
-            <div className="dq-spinner-sm" />
-          ) : (
-            <FileDown size={20} />
-          )}
+
+        <button onClick={handleSavePDF} disabled={saving} className="dq-btn w-full flex items-center justify-center gap-2">
+          {saving ? <div className="dq-spinner-sm" /> : <FileDown size={20} />}
           PDFを保存
         </button>
         <button

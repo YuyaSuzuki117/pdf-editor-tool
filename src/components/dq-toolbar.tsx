@@ -49,9 +49,20 @@ const tools: ToolDef[] = [
     ),
   },
   {
+    mode: 'shape',
+    label: '🔷 図形',
+    title: '図形描画（矩形・円・矢印・直線）',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="10" height="10" rx="1" />
+        <circle cx="17" cy="17" r="5" />
+      </svg>
+    ),
+  },
+  {
     mode: 'highlight',
     label: '🔦 マーカー',
-    title: 'マーカー',
+    title: 'マーカー・下線・取消線・墨消し',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <path d="M9 11l-6 6v3h9l3-3" />
@@ -75,7 +86,7 @@ const tools: ToolDef[] = [
   {
     mode: 'pages',
     label: '📄 ページ',
-    title: 'ページ管理',
+    title: 'ページ管理・結合・分割',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <rect x="2" y="2" width="20" height="8" rx="1" />
@@ -103,7 +114,6 @@ const DqToolbar = React.memo(function DqToolbar() {
 
   const handleToolChange = useCallback((mode: ToolMode) => {
     if (mode !== prevToolRef.current) {
-      // フラッシュエフェクト
       const flash = document.createElement('div');
       flash.className = 'dq-tool-flash-overlay';
       document.body.appendChild(flash);
@@ -115,7 +125,7 @@ const DqToolbar = React.memo(function DqToolbar() {
 
   return (
     <div
-      className="dq-window rounded-none border-x-0 border-b-0 z-40 shrink-0 ynk-stone-floor"
+      className="dq-window rounded-none border-x-0 border-b-0 z-[60] shrink-0 ynk-stone-floor"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         background: 'linear-gradient(180deg, #3a3228 0%, #2a2218 50%, #1e1810 100%)',
@@ -123,12 +133,11 @@ const DqToolbar = React.memo(function DqToolbar() {
         boxShadow: '0 -4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(92,74,46,0.2)',
       }}
     >
-      <div className="flex items-stretch justify-around" role="toolbar" aria-label="PDF編集ツール">
-        {/* Undoボタン */}
+      <div className="flex items-stretch justify-around overflow-x-auto" role="toolbar" aria-label="PDF編集ツール">
         {undoStackSize > 0 && (
           <button
             onClick={() => dispatch({ type: 'UNDO_ANNOTATION' })}
-            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
+            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[44px] gap-0.5 px-1.5 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
             title="元に戻す (Ctrl+Z)"
             aria-label="元に戻す"
           >
@@ -136,14 +145,13 @@ const DqToolbar = React.memo(function DqToolbar() {
               <polyline points="1 4 1 10 7 10" />
               <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
-            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">戻す</span>
+            <span className="dq-text text-[9px] leading-tight whitespace-nowrap">戻す</span>
           </button>
         )}
-        {/* Redoボタン */}
         {redoStackSize > 0 && (
           <button
             onClick={() => dispatch({ type: 'REDO_ANNOTATION' })}
-            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
+            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[44px] gap-0.5 px-1.5 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
             title="やり直し (Ctrl+Shift+Z)"
             aria-label="やり直し"
           >
@@ -151,7 +159,7 @@ const DqToolbar = React.memo(function DqToolbar() {
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
             </svg>
-            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">進む</span>
+            <span className="dq-text text-[9px] leading-tight whitespace-nowrap">進む</span>
           </button>
         )}
         {tools.map(({ mode, label, icon, title }) => {
@@ -163,7 +171,7 @@ const DqToolbar = React.memo(function DqToolbar() {
               title={title}
               aria-label={label}
               aria-pressed={active}
-              className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[42px] gap-0.5 px-1.5 transition-all cursor-pointer select-none active:scale-95 ${
                 active ? 'text-[var(--ynk-gold)]' : 'text-[var(--ynk-bone)] opacity-60 hover:opacity-100'
               }`}
               style={active ? {
@@ -172,36 +180,22 @@ const DqToolbar = React.memo(function DqToolbar() {
                 borderTop: '2px solid #d4a017',
               } : {}}
             >
-              {/* つるはしカーソル: 選択中の左に点滅 */}
               {active && (
                 <span
-                  className="absolute left-0 top-1/2 -translate-y-1/2 text-[10px] text-[var(--ynk-gold)]"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 text-[9px] text-[var(--ynk-gold)]"
                   style={{ animation: 'ynk-dig 0.4s infinite' }}
                 >
                   ⛏
                 </span>
               )}
-              {/* アクティブ時のキラキラエフェクト */}
               {active && (
                 <>
-                  <span
-                    className="absolute top-1 right-1 text-[8px]"
-                    style={{ animation: 'ynk-sparkle 2s ease-in-out infinite' }}
-                  >
-                    ✦
-                  </span>
-                  <span
-                    className="absolute bottom-2 left-1 text-[6px]"
-                    style={{ animation: 'ynk-sparkle 2s ease-in-out infinite 0.7s', color: '#7ec8e3' }}
-                  >
-                    ✦
-                  </span>
+                  <span className="absolute top-1 right-0.5 text-[7px]" style={{ animation: 'ynk-sparkle 2s ease-in-out infinite' }}>✦</span>
+                  <span className="absolute bottom-2 left-0.5 text-[5px]" style={{ animation: 'ynk-sparkle 2s ease-in-out infinite 0.7s', color: '#7ec8e3' }}>✦</span>
                 </>
               )}
               <span className={active ? 'ynk-active-sparkle' : ''}>{icon}</span>
-              <span className="dq-text text-[10px] leading-tight whitespace-nowrap">
-                {label}
-              </span>
+              <span className="dq-text text-[9px] leading-tight whitespace-nowrap">{label}</span>
             </button>
           );
         })}

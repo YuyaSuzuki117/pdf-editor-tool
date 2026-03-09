@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes, renderPage } from '@/lib/pdf-engine';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { Annotation, TextStyle, DrawStyle, HighlightStyle } from '@/types/pdf';
+import type { Annotation, TextStyle, DrawStyle, HighlightStyle, ShapeStyle, NoteStyle } from '@/types/pdf';
 
 // メモ化されたアノテーションアイテム
 const AnnotationItem = React.memo(function AnnotationItem({
@@ -142,6 +142,8 @@ const AnnotationItem = React.memo(function AnnotationItem({
           fontSize: style.fontSize * (fitScale / 1),
           color: style.color,
           fontFamily: style.fontFamily || 'Helvetica, Arial, sans-serif',
+          fontWeight: style.bold ? 'bold' : 'normal',
+          fontStyle: style.italic ? 'italic' : 'normal',
           lineHeight: 1.2,
           whiteSpace: 'pre-wrap',
           textShadow: '0 0 2px rgba(255,255,255,0.5)',
@@ -237,6 +239,10 @@ const AnnotationItem = React.memo(function AnnotationItem({
   }
   if (ann.type === 'highlight') {
     const style = ann.style as HighlightStyle;
+    const mode = style.markupMode || 'highlight';
+    const displayHeight = (mode === 'underline' || mode === 'strikethrough') ? 3 : style.height;
+    const displayOpacity = mode === 'redact' ? 1 : style.opacity;
+    const displayColor = mode === 'redact' ? '#000000' : style.color;
     return (
       <div
         className="absolute pointer-events-auto group"
@@ -244,10 +250,10 @@ const AnnotationItem = React.memo(function AnnotationItem({
           left: ann.position.x,
           top: ann.position.y,
           width: style.width,
-          height: style.height,
-          backgroundColor: style.color,
-          opacity: dragState.dragging && isDraggingRef.current ? 0.7 * style.opacity : style.opacity,
-          borderRadius: 2,
+          height: displayHeight,
+          backgroundColor: displayColor,
+          opacity: dragState.dragging && isDraggingRef.current ? 0.7 * displayOpacity : displayOpacity,
+          borderRadius: mode === 'redact' ? 0 : 2,
           cursor: 'grab',
           userSelect: 'none',
           transform: dragTransform,
@@ -257,21 +263,19 @@ const AnnotationItem = React.memo(function AnnotationItem({
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
       >
-        {(
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (dragDistRef.current < 5) onDelete(ann.id);
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
-            style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto', opacity: 1 }}
-            aria-label="削除"
-          >
-            <X size={14} />
-          </button>
-        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (dragDistRef.current < 5) onDelete(ann.id);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
+          style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto', opacity: 1 }}
+          aria-label="削除"
+        >
+          <X size={14} />
+        </button>
       </div>
     );
   }
@@ -317,6 +321,137 @@ const AnnotationItem = React.memo(function AnnotationItem({
             <X size={14} />
           </button>
         )}
+      </div>
+    );
+  }
+  if (ann.type === 'shape') {
+    const style = ann.style as ShapeStyle;
+    let shapeData: { shapeType: string; x1: number; y1: number; x2: number; y2: number; filled?: boolean; fillColor?: string };
+    try { shapeData = JSON.parse(ann.content); } catch { return null; }
+    const x = Math.min(shapeData.x1, shapeData.x2);
+    const y = Math.min(shapeData.y1, shapeData.y2);
+    const w = Math.abs(shapeData.x2 - shapeData.x1);
+    const h = Math.abs(shapeData.y2 - shapeData.y1);
+    const pad = style.strokeWidth * 2;
+
+    const renderShape = () => {
+      switch (shapeData.shapeType) {
+        case 'rectangle':
+          return (
+            <>
+              {shapeData.filled && shapeData.fillColor && (
+                <rect x={pad} y={pad} width={w} height={h} fill={shapeData.fillColor} opacity={0.3} />
+              )}
+              <rect x={pad} y={pad} width={w} height={h} fill="none" stroke={style.strokeColor} strokeWidth={style.strokeWidth} />
+            </>
+          );
+        case 'circle':
+          return (
+            <>
+              {shapeData.filled && shapeData.fillColor && (
+                <ellipse cx={w/2+pad} cy={h/2+pad} rx={w/2} ry={h/2} fill={shapeData.fillColor} opacity={0.3} />
+              )}
+              <ellipse cx={w/2+pad} cy={h/2+pad} rx={w/2} ry={h/2} fill="none" stroke={style.strokeColor} strokeWidth={style.strokeWidth} />
+            </>
+          );
+        case 'line':
+          return <line x1={shapeData.x1 - x + pad} y1={shapeData.y1 - y + pad} x2={shapeData.x2 - x + pad} y2={shapeData.y2 - y + pad} stroke={style.strokeColor} strokeWidth={style.strokeWidth} strokeLinecap="round" />;
+        case 'arrow': {
+          const ax1 = shapeData.x1 - x + pad;
+          const ay1 = shapeData.y1 - y + pad;
+          const ax2 = shapeData.x2 - x + pad;
+          const ay2 = shapeData.y2 - y + pad;
+          const angle = Math.atan2(ay2 - ay1, ax2 - ax1);
+          const headLen = Math.max(12, style.strokeWidth * 4);
+          return (
+            <>
+              <line x1={ax1} y1={ay1} x2={ax2} y2={ay2} stroke={style.strokeColor} strokeWidth={style.strokeWidth} strokeLinecap="round" />
+              <line x1={ax2} y1={ay2} x2={ax2 - headLen * Math.cos(angle - Math.PI/6)} y2={ay2 - headLen * Math.sin(angle - Math.PI/6)} stroke={style.strokeColor} strokeWidth={style.strokeWidth} strokeLinecap="round" />
+              <line x1={ax2} y1={ay2} x2={ax2 - headLen * Math.cos(angle + Math.PI/6)} y2={ay2 - headLen * Math.sin(angle + Math.PI/6)} stroke={style.strokeColor} strokeWidth={style.strokeWidth} strokeLinecap="round" />
+            </>
+          );
+        }
+        default: return null;
+      }
+    };
+
+    return (
+      <div
+        className="absolute pointer-events-auto group"
+        style={{
+          left: x - pad, top: y - pad,
+          width: w + pad * 2, height: h + pad * 2,
+          cursor: 'grab', userSelect: 'none',
+          transform: dragTransform,
+          transition: dragState.dragging ? 'none' : 'transform 0.1s',
+          ...draggingStyle,
+        }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+      >
+        <svg width={w + pad * 2} height={h + pad * 2} style={{ overflow: 'visible' }}>
+          {renderShape()}
+        </svg>
+        <button
+          onClick={(e) => { e.stopPropagation(); if (dragDistRef.current < 5) onDelete(ann.id); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
+          style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
+          aria-label="削除"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    );
+  }
+  if (ann.type === 'note') {
+    const style = ann.style as NoteStyle;
+    return (
+      <div
+        className="absolute pointer-events-auto group"
+        style={{
+          left: ann.position.x, top: ann.position.y,
+          cursor: 'grab', userSelect: 'none',
+          transform: dragTransform,
+          transition: dragState.dragging ? 'none' : 'transform 0.1s',
+          ...draggingStyle,
+        }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+      >
+        <div style={{
+          width: 28, height: 28,
+          background: style.noteColor || '#fde047',
+          borderRadius: 4,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, boxShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+          border: '1px solid rgba(0,0,0,0.2)',
+        }} title={ann.content}>
+          📝
+        </div>
+        {ann.content && (
+          <div className="hidden group-hover:block absolute left-0 top-8 z-50" style={{
+            background: style.noteColor || '#fde047',
+            color: '#1a1008', padding: '8px 12px', borderRadius: 4,
+            fontSize: 12, maxWidth: 200, minWidth: 100,
+            boxShadow: '2px 2px 8px rgba(0,0,0,0.3)',
+            border: '1px solid rgba(0,0,0,0.2)',
+            wordBreak: 'break-word',
+          }}>
+            {ann.content}
+          </div>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); if (dragDistRef.current < 5) onDelete(ann.id); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
+          style={{ fontSize: 12, lineHeight: 1, pointerEvents: 'auto' }}
+          aria-label="削除"
+        >
+          <X size={14} />
+        </button>
       </div>
     );
   }
@@ -701,6 +836,7 @@ export default function PDFViewer() {
         >
           {state.toolMode === 'text' && 'テキストモード - PDFをタップして配置'}
           {state.toolMode === 'draw' && 'フリーハンド描画モード'}
+          {state.toolMode === 'shape' && '図形描画モード - ドラッグで図形を配置'}
           {state.toolMode === 'highlight' && 'マーカーモード - ドラッグで範囲選択'}
           {state.toolMode === 'image' && 'スタンプモード - PDFをタップして配置'}
         </div>

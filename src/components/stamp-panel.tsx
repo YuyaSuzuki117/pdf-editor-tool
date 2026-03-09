@@ -141,8 +141,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     if (!ctx) return;
     canvas.width = 300;
     canvas.height = 120;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 300, 120);
+    ctx.clearRect(0, 0, 300, 120);
     setSigHasContent(false);
     setSigDataURL(null);
   }, []);
@@ -380,7 +379,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
                 border: '2px solid #5c4a2e',
                 borderRadius: 4,
                 overflow: 'hidden',
-                background: '#fff',
+                background: 'repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 16px 16px',
                 touchAction: 'none',
               }}
             >

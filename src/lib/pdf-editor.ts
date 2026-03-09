@@ -28,16 +28,25 @@ function hexToRgb(r_hex: string, rgb_fn: typeof import('pdf-lib').rgb) {
 // 日本語フォントキャッシュ
 let cachedFontBytes: ArrayBuffer | null = null;
 
+const FONT_URLS = [
+  'https://fonts.gstatic.com/s/notosansjp/v56/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75s.ttf',
+  'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-jp@latest/japanese-400-normal.ttf',
+];
+
 async function getJapaneseFont(): Promise<ArrayBuffer> {
   if (cachedFontBytes) return cachedFontBytes;
-  const response = await fetch(
-    'https://fonts.gstatic.com/s/notosansjp/v53/Ia2Dwd1E0sPT-61h3ej3nhRVlE16.ttf'
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Japanese font: ${response.status}`);
+  for (const url of FONT_URLS) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        cachedFontBytes = await response.arrayBuffer();
+        return cachedFontBytes;
+      }
+    } catch {
+      // try next URL
+    }
   }
-  cachedFontBytes = await response.arrayBuffer();
-  return cachedFontBytes;
+  throw new Error('Failed to fetch Japanese font from all sources');
 }
 
 export async function addTextToPdf(
@@ -159,6 +168,41 @@ export async function reorderPages(
   return newDoc.save();
 }
 
+export async function splitPdf(
+  pdfBytes: ArrayBuffer,
+  pageIndices: number[]
+): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
+  const srcDoc = await PDFDocument.load(pdfBytes);
+  const newDoc = await PDFDocument.create();
+  const pages = await newDoc.copyPages(srcDoc, pageIndices);
+  pages.forEach((p) => newDoc.addPage(p));
+  return newDoc.save();
+}
+
+export async function insertBlankPage(
+  pdfBytes: ArrayBuffer,
+  afterIndex: number
+): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
+  const doc = await PDFDocument.load(pdfBytes);
+  const refPage = doc.getPages()[afterIndex] || doc.getPages()[0];
+  const { width, height } = refPage.getSize();
+  doc.insertPage(afterIndex + 1, [width, height]);
+  return doc.save();
+}
+
+export async function duplicatePage(
+  pdfBytes: ArrayBuffer,
+  pageIndex: number
+): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
+  const srcDoc = await PDFDocument.load(pdfBytes);
+  const [copiedPage] = await srcDoc.copyPages(srcDoc, [pageIndex]);
+  srcDoc.insertPage(pageIndex + 1, copiedPage);
+  return srcDoc.save();
+}
+
 export async function addDrawingToPdf(
   pdfBytes: ArrayBuffer,
   pageIndex: number,
@@ -213,20 +257,54 @@ export async function addHighlightToPdf(
   return doc.save();
 }
 
+export async function addWatermark(
+  pdfBytes: ArrayBuffer,
+  text: string,
+  options: { color?: string; opacity?: number; fontSize?: number; angle?: number }
+): Promise<Uint8Array> {
+  const { PDFDocument, rgb, degrees, StandardFonts } = await getPdfLib();
+  const doc = await PDFDocument.load(pdfBytes);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const pages = doc.getPages();
+  const size = options.fontSize || 48;
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+    const textWidth = font.widthOfTextAtSize(text, size);
+    page.drawText(text, {
+      x: width / 2 - textWidth / 2,
+      y: height / 2,
+      size,
+      font,
+      color: hexToRgb(options.color || '#888888', rgb),
+      opacity: options.opacity || 0.2,
+      rotate: degrees(options.angle || -45),
+    });
+  }
+  return doc.save();
+}
+
 // === バッチ処理: 全アノテーションを1回のload/saveで適用 ===
 export interface BatchAnnotation {
-  type: 'text' | 'draw' | 'highlight' | 'image';
+  type: 'text' | 'draw' | 'highlight' | 'image' | 'shape' | 'note';
   pageIndex: number;
   position: { x: number; y: number };
   content: string;
   fontSize?: number;
   color?: string;
   fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
   strokeColor?: string;
   strokeWidth?: number;
   size?: { width: number; height: number };
   opacity?: number;
   imageBytes?: Uint8Array;
+  markupMode?: string;
+  shapeData?: {
+    shapeType: string;
+    x1: number; y1: number; x2: number; y2: number;
+    filled?: boolean; fillColor?: string;
+  };
 }
 
 export async function applyAllAnnotations(
@@ -238,7 +316,6 @@ export async function applyAllAnnotations(
   const doc = await PDFDocument.load(pdfBytes);
   const pages = doc.getPages();
 
-  // 日本語フォントの事前準備（テキストアノテーションがある場合のみ）
   const hasJapanese = annotations.some(
     (a) => a.type === 'text' && (a.fontFamily === 'Noto Sans JP' || !a.fontFamily)
   );
@@ -251,8 +328,8 @@ export async function applyAllAnnotations(
       doc.registerFontkit(fontkit);
       const fontBytes = await getJapaneseFont();
       jpFont = await doc.embedFont(fontBytes, { subset: true });
-    } catch {
-      // fallback
+    } catch (err) {
+      throw new Error('日本語フォントの読み込みに失敗しました。インターネット接続を確認してください。' + (err instanceof Error ? ' (' + err.message + ')' : ''));
     }
   }
   if (annotations.some((a) => a.type === 'text')) {
@@ -275,13 +352,18 @@ export async function applyAllAnnotations(
       case 'text': {
         const useJp = ann.fontFamily === 'Noto Sans JP' || !ann.fontFamily;
         const font = (useJp && jpFont) ? jpFont : defaultFont!;
-        page.drawText(ann.content, {
-          x: ann.position.x,
-          y: height - ann.position.y - (ann.fontSize || 16),
-          size: ann.fontSize || 16,
-          font,
-          color: hexToRgb(ann.color || '#000000', rgb),
-        });
+        const fs = ann.fontSize || 16;
+        // 各行を描画（改行対応）
+        const lines = ann.content.split('\n');
+        for (let li = 0; li < lines.length; li++) {
+          page.drawText(lines[li], {
+            x: ann.position.x,
+            y: height - ann.position.y - fs - (li * fs * 1.2),
+            size: fs,
+            font,
+            color: hexToRgb(ann.color || '#000000', rgb),
+          });
+        }
         break;
       }
       case 'draw': {
@@ -300,14 +382,47 @@ export async function applyAllAnnotations(
         break;
       }
       case 'highlight': {
-        page.drawRectangle({
-          x: ann.position.x,
-          y: height - ann.position.y - (ann.size?.height || 0),
-          width: ann.size?.width || 0,
-          height: ann.size?.height || 0,
-          color: hexToRgb(ann.color || '#ffff00', rgb),
-          opacity: ann.opacity ?? 0.35,
-        });
+        const hW = ann.size?.width || 0;
+        const hH = ann.size?.height || 0;
+        const mode = ann.markupMode || 'highlight';
+
+        if (mode === 'redact') {
+          page.drawRectangle({
+            x: ann.position.x,
+            y: height - ann.position.y - hH,
+            width: hW,
+            height: hH,
+            color: hexToRgb('#000000', rgb),
+            opacity: 1,
+          });
+        } else if (mode === 'underline') {
+          page.drawRectangle({
+            x: ann.position.x,
+            y: height - ann.position.y - hH,
+            width: hW,
+            height: 3,
+            color: hexToRgb(ann.color || '#ef4444', rgb),
+            opacity: 1,
+          });
+        } else if (mode === 'strikethrough') {
+          page.drawRectangle({
+            x: ann.position.x,
+            y: height - ann.position.y - hH / 2 - 1.5,
+            width: hW,
+            height: 3,
+            color: hexToRgb(ann.color || '#ef4444', rgb),
+            opacity: 0.8,
+          });
+        } else {
+          page.drawRectangle({
+            x: ann.position.x,
+            y: height - ann.position.y - hH,
+            width: hW,
+            height: hH,
+            color: hexToRgb(ann.color || '#ffff00', rgb),
+            opacity: ann.opacity ?? 0.35,
+          });
+        }
         break;
       }
       case 'image': {
@@ -326,10 +441,91 @@ export async function applyAllAnnotations(
         });
         break;
       }
+      case 'shape': {
+        if (!ann.shapeData) break;
+        const sd = ann.shapeData;
+        const sx1 = sd.x1;
+        const sy1 = height - sd.y1;
+        const sx2 = sd.x2;
+        const sy2 = height - sd.y2;
+        const sc = hexToRgb(ann.strokeColor || '#000000', rgb);
+        const sw = ann.strokeWidth || 2;
+
+        switch (sd.shapeType) {
+          case 'rectangle': {
+            const rx = Math.min(sx1, sx2);
+            const ry = Math.min(sy1, sy2);
+            const rw = Math.abs(sx2 - sx1);
+            const rh = Math.abs(sy2 - sy1);
+            page.drawRectangle({
+              x: rx, y: ry, width: rw, height: rh,
+              borderColor: sc, borderWidth: sw,
+              color: sd.filled && sd.fillColor ? hexToRgb(sd.fillColor, rgb) : undefined,
+              opacity: sd.filled ? 0.3 : undefined,
+            });
+            break;
+          }
+          case 'circle': {
+            const cx = (sx1 + sx2) / 2;
+            const cy = (sy1 + sy2) / 2;
+            const erx = Math.abs(sx2 - sx1) / 2;
+            const ery = Math.abs(sy2 - sy1) / 2;
+            page.drawEllipse({
+              x: cx, y: cy, xScale: erx, yScale: ery,
+              borderColor: sc, borderWidth: sw,
+              color: sd.filled && sd.fillColor ? hexToRgb(sd.fillColor, rgb) : undefined,
+              opacity: sd.filled ? 0.3 : undefined,
+            });
+            break;
+          }
+          case 'line':
+            page.drawLine({
+              start: { x: sx1, y: sy1 },
+              end: { x: sx2, y: sy2 },
+              thickness: sw,
+              color: sc,
+            });
+            break;
+          case 'arrow': {
+            page.drawLine({
+              start: { x: sx1, y: sy1 },
+              end: { x: sx2, y: sy2 },
+              thickness: sw,
+              color: sc,
+            });
+            // 矢頭
+            const angle = Math.atan2(sy2 - sy1, sx2 - sx1);
+            const headLen = Math.max(10, sw * 4);
+            const ah1x = sx2 - headLen * Math.cos(angle - Math.PI / 6);
+            const ah1y = sy2 - headLen * Math.sin(angle - Math.PI / 6);
+            const ah2x = sx2 - headLen * Math.cos(angle + Math.PI / 6);
+            const ah2y = sy2 - headLen * Math.sin(angle + Math.PI / 6);
+            page.drawLine({ start: { x: sx2, y: sy2 }, end: { x: ah1x, y: ah1y }, thickness: sw, color: sc });
+            page.drawLine({ start: { x: sx2, y: sy2 }, end: { x: ah2x, y: ah2y }, thickness: sw, color: sc });
+            break;
+          }
+        }
+        break;
+      }
+      case 'note':
+        // 付箋はPDFに埋め込まない（表示のみ）
+        break;
     }
   }
 
   onProgress?.(100);
+  return doc.save();
+}
+
+export async function setMetadata(
+  pdfBytes: Uint8Array,
+  meta: { title?: string; author?: string }
+): Promise<Uint8Array> {
+  if (!meta.title && !meta.author) return pdfBytes;
+  const { PDFDocument } = await getPdfLib();
+  const doc = await PDFDocument.load(pdfBytes);
+  if (meta.title) doc.setTitle(meta.title);
+  if (meta.author) doc.setAuthor(meta.author);
   return doc.save();
 }
 

@@ -114,7 +114,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end"
+      className={allowInteraction ? "fixed bottom-0 left-0 right-0 z-50 flex items-end" : "fixed inset-0 z-50 flex items-end"}
       style={{ pointerEvents: allowInteraction ? 'none' : 'auto' }}
     >
       {!allowInteraction && (

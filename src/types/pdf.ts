@@ -1,6 +1,6 @@
-export type ToolMode = 'view' | 'text' | 'draw' | 'highlight' | 'image' | 'pages' | 'save';
+export type ToolMode = 'view' | 'text' | 'draw' | 'shape' | 'highlight' | 'image' | 'pages' | 'save';
 
-export type AnnotationType = 'text' | 'draw' | 'highlight' | 'image';
+export type AnnotationType = 'text' | 'draw' | 'highlight' | 'image' | 'shape' | 'note';
 
 export interface Position {
   x: number;
@@ -16,6 +16,9 @@ export interface TextStyle {
   fontSize: number;
   color: string;
   fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  align?: 'left' | 'center' | 'right';
 }
 
 export interface DrawStyle {
@@ -29,6 +32,20 @@ export interface HighlightStyle {
   opacity: number;
   width: number;
   height: number;
+  markupMode?: 'highlight' | 'underline' | 'strikethrough' | 'redact';
+}
+
+export interface ShapeStyle {
+  shapeType: 'rectangle' | 'circle' | 'arrow' | 'line';
+  strokeColor: string;
+  strokeWidth: number;
+  fillColor?: string;
+  filled?: boolean;
+}
+
+export interface NoteStyle {
+  noteColor: string;
+  expanded?: boolean;
 }
 
 export interface Annotation {
@@ -37,7 +54,7 @@ export interface Annotation {
   page: number;
   position: Position;
   content: string;
-  style: TextStyle | DrawStyle | HighlightStyle | Record<string, string | number>;
+  style: TextStyle | DrawStyle | HighlightStyle | ShapeStyle | NoteStyle | Record<string, string | number | boolean | undefined>;
   renderScale?: number;
   createdAt: number;
 }

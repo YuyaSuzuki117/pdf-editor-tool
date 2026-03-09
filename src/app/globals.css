@@ -619,3 +619,15 @@ body {
       transparent 90px
     );
 }
+
+/* Focus indicators for accessibility */
+.dq-btn:focus-visible,
+.dq-btn-small:focus-visible,
+.dq-btn-secondary:focus-visible,
+.dq-btn-danger:focus-visible,
+.dq-color-btn:focus-visible,
+.dq-input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #fde047;
+  outline-offset: 2px;
+}

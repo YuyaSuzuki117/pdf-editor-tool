@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
@@ -11,6 +11,8 @@ const typeIcons: Record<AnnotationType, React.ReactNode> = {
   draw: <Pencil size={14} />,
   highlight: <Highlighter size={14} />,
   image: <Type size={14} />,
+  shape: <Diamond size={14} />,
+  note: <StickyNote size={14} />,
 };
 
 const typeLabels: Record<AnnotationType, string> = {
@@ -18,6 +20,8 @@ const typeLabels: Record<AnnotationType, string> = {
   draw: '描画',
   highlight: 'マーカー',
   image: '画像',
+  shape: '図形',
+  note: 'メモ',
 };
 
 export default function AnnotationList() {
