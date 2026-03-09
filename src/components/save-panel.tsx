@@ -164,7 +164,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       // ウォーターマーク
       if (watermarkText.trim()) {
         pdfBytes = await addWatermark(
-          pdfBytes.buffer as ArrayBuffer,
+          pdfBytes.slice().buffer,
           watermarkText.trim(),
           { opacity: watermarkOpacity, fontSize: watermarkSize }
         );

@@ -74,6 +74,8 @@ export default function DqDropZone() {
 
         setProgress(65);
         const doc = await loadDocumentFromBytes(arrayBuffer);
+        const numPages = doc.numPages;
+        doc.destroy(); // メモリ解放（PDFViewerで再度ロードされる）
         setProgress(100);
 
         // 少し待ってから表示（演出）
@@ -81,7 +83,7 @@ export default function DqDropZone() {
 
         dispatch({
           type: 'LOAD_PDF',
-          payload: { file, pdfData: arrayBuffer, numPages: doc.numPages },
+          payload: { file, pdfData: arrayBuffer, numPages },
         });
         setLargeFileWarning(false);
       } catch (err) {

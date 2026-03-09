@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useReducer, useRef, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useCallback, useMemo, ReactNode } from 'react';
 import { PDFState, PDFAction, Annotation } from '@/types/pdf';
 
 const initialState: PDFState = {
@@ -18,7 +18,8 @@ const initialState: PDFState = {
 
 type UndoEntry =
   | { kind: 'removed'; annotation: Annotation }
-  | { kind: 'added'; annotation: Annotation };
+  | { kind: 'added'; annotation: Annotation }
+  | { kind: 'updated'; id: string; before: Partial<Annotation>; after: Partial<Annotation> };
 
 interface ReducerState {
   pdfState: PDFState;
@@ -88,9 +89,16 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
         redoStack: [],
       };
     }
-    case 'UPDATE_ANNOTATION':
+    case 'UPDATE_ANNOTATION': {
+      const target = s.annotations.find((a) => a.id === action.payload.id);
+      if (!target) return state;
+      // 変更前の値を保存（undo用）
+      const before: Partial<Annotation> = {};
+      for (const key of Object.keys(action.payload.updates) as (keyof Annotation)[]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (before as any)[key] = (target as any)[key];
+      }
       return {
-        ...state,
         pdfState: {
           ...s,
           annotations: s.annotations.map((a) =>
@@ -98,7 +106,10 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           ),
           isModified: true,
         },
+        undoStack: [...state.undoStack, { kind: 'updated', id: action.payload.id, before, after: action.payload.updates }],
+        redoStack: [],
       };
+    }
     case 'SET_MODIFIED':
       return { ...state, pdfState: { ...s, isModified: action.payload } };
     case 'SET_LOADING':
@@ -124,6 +135,19 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           undoStack: state.undoStack.slice(0, -1),
           redoStack: [...state.redoStack, entry],
         };
+      } else if (entry.kind === 'updated') {
+        // undo an update → revert to before values
+        return {
+          pdfState: {
+            ...s,
+            annotations: s.annotations.map((a) =>
+              a.id === entry.id ? { ...a, ...entry.before } : a
+            ),
+            isModified: true,
+          },
+          undoStack: state.undoStack.slice(0, -1),
+          redoStack: [...state.redoStack, entry],
+        };
       } else {
         return {
           pdfState: {
@@ -140,7 +164,6 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
       if (state.redoStack.length === 0) return state;
       const redoEntry = state.redoStack[state.redoStack.length - 1];
       if (redoEntry.kind === 'removed') {
-        // redo a removal → remove again
         return {
           pdfState: {
             ...s,
@@ -150,8 +173,20 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
           undoStack: [...state.undoStack, redoEntry],
           redoStack: state.redoStack.slice(0, -1),
         };
+      } else if (redoEntry.kind === 'updated') {
+        // redo an update → apply after values again
+        return {
+          pdfState: {
+            ...s,
+            annotations: s.annotations.map((a) =>
+              a.id === redoEntry.id ? { ...a, ...redoEntry.after } : a
+            ),
+            isModified: true,
+          },
+          undoStack: [...state.undoStack, redoEntry],
+          redoStack: state.redoStack.slice(0, -1),
+        };
       } else {
-        // redo an addition → add again
         return {
           pdfState: { ...s, annotations: [...s.annotations, redoEntry.annotation], isModified: true },
           undoStack: [...state.undoStack, redoEntry],
@@ -185,15 +220,20 @@ const PDFContext = createContext<{
 
 export function PDFProvider({ children }: { children: ReactNode }) {
   const [reducerState, rawDispatch] = useReducer(combinedReducer, initialReducerState);
-  const undoStackSizeRef = useRef(0);
-  undoStackSizeRef.current = reducerState.undoStack.length;
 
   const dispatch = useCallback((action: PDFAction) => {
     rawDispatch(action);
   }, []);
 
+  const value = useMemo(() => ({
+    state: reducerState.pdfState,
+    dispatch,
+    undoStackSize: reducerState.undoStack.length,
+    redoStackSize: reducerState.redoStack.length,
+  }), [reducerState.pdfState, dispatch, reducerState.undoStack.length, reducerState.redoStack.length]);
+
   return (
-    <PDFContext.Provider value={{ state: reducerState.pdfState, dispatch, undoStackSize: reducerState.undoStack.length, redoStackSize: reducerState.redoStack.length }}>
+    <PDFContext.Provider value={value}>
       {children}
     </PDFContext.Provider>
   );

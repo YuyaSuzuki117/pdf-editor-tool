@@ -264,7 +264,22 @@ export async function addWatermark(
 ): Promise<Uint8Array> {
   const { PDFDocument, rgb, degrees, StandardFonts } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
-  const font = await doc.embedFont(StandardFonts.Helvetica);
+
+  // 日本語テキストが含まれる場合は日本語フォントを使用
+  const hasNonAscii = /[^\x00-\x7F]/.test(text);
+  let font;
+  if (hasNonAscii) {
+    try {
+      const fontkit = await getFontkit();
+      doc.registerFontkit(fontkit);
+      const fontBytes = await getJapaneseFont();
+      font = await doc.embedFont(fontBytes, { subset: true });
+    } catch {
+      font = await doc.embedFont(StandardFonts.Helvetica);
+    }
+  } else {
+    font = await doc.embedFont(StandardFonts.Helvetica);
+  }
   const pages = doc.getPages();
   const size = options.fontSize || 48;
   for (const page of pages) {
@@ -530,7 +545,7 @@ export async function setMetadata(
 }
 
 export function savePdfAsBlob(pdfBytes: Uint8Array): Blob {
-  return new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+  return new Blob([pdfBytes.slice().buffer], { type: 'application/pdf' });
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

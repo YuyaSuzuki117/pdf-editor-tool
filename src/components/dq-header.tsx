@@ -24,9 +24,11 @@ export default function DqHeader() {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const doc = await loadDocumentFromBytes(arrayBuffer);
+        const numPages = doc.numPages;
+        doc.destroy(); // メモリ解放（PDFViewerで再度ロードされる）
         dispatch({
           type: 'LOAD_PDF',
-          payload: { file, pdfData: arrayBuffer, numPages: doc.numPages },
+          payload: { file, pdfData: arrayBuffer, numPages },
         });
       } catch {
         dispatch({ type: 'SET_ERROR', payload: 'PDFの読み込みに失敗しました' });

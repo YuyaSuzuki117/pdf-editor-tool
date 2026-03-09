@@ -679,7 +679,9 @@ export default function PDFViewer() {
     dispatch({ type: 'UPDATE_ANNOTATION', payload: { id, updates } });
   }, [dispatch]);
 
-  // Ctrl+Wheel ズーム
+  // Ctrl+Wheel ズーム（useRefで最新scaleを参照してstale closure回避）
+  const scaleRef = useRef(state.scale);
+  scaleRef.current = state.scale;
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -687,11 +689,11 @@ export default function PDFViewer() {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      dispatch({ type: 'SET_SCALE', payload: state.scale + delta });
+      dispatch({ type: 'SET_SCALE', payload: scaleRef.current + delta });
     };
     container.addEventListener('wheel', handler, { passive: false });
     return () => container.removeEventListener('wheel', handler);
-  }, [dispatch, state.scale]);
+  }, [dispatch]);
 
   // テキストモード以外のときカーソルをリセット
   useEffect(() => {
