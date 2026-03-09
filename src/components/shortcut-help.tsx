@@ -13,8 +13,8 @@ const shortcuts = [
   { keys: 'Ctrl+Wheel', desc: 'ズーム' },
   { keys: 'Ctrl + / -', desc: 'ズームイン/アウト' },
   { keys: 'Ctrl+0', desc: 'ズームリセット (幅に合わせる)' },
-  { keys: 'ページ番号クリック', desc: 'ページジャンプ' },
-  { keys: 'ダブルクリック', desc: 'テキスト再編集' },
+  { keys: 'ページ番号タップ', desc: '直接ページジャンプ' },
+  { keys: 'テキストをダブルクリック', desc: 'テキスト再編集' },
   { keys: '?', desc: 'このヘルプを表示' },
 ];
 

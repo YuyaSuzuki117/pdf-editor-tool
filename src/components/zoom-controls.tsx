@@ -25,23 +25,18 @@ const ZoomControls = React.memo(function ZoomControls() {
   }, [state.scale, setScale]);
 
   const fitWidth = useCallback(() => {
-    // scale=1 means fit-to-width (the viewer computes fitScale = containerWidth/pageWidth * scale)
     setScale(1);
   }, [setScale]);
 
   const fitPage = useCallback(() => {
-    // Fit entire page in viewport: find container height, compute scale ratio
     const container = document.querySelector('.pdf-canvas-container') as HTMLElement;
     const canvas = container?.querySelector('canvas') as HTMLCanvasElement;
     if (!container || !canvas) { setScale(1); return; }
-    const containerH = container.clientHeight - 32; // margin
+    const containerH = container.clientHeight - 32;
     const containerW = container.clientWidth;
     const canvasW = canvas.width / (window.devicePixelRatio || 1);
     const canvasH = canvas.height / (window.devicePixelRatio || 1);
     if (canvasW === 0 || canvasH === 0) { setScale(1); return; }
-    // current fitScale (at scale=1) = containerWidth / pageWidth
-    // so current rendered height at scale=1 = canvasH (when state.scale = current)
-    // We want: newScale such that renderedHeight * (newScale/currentScale) fits containerH
     const currentScale = state.scale;
     const scaleForHeight = (containerH / canvasH) * currentScale;
     const scaleForWidth = (containerW / canvasW) * currentScale;
@@ -54,107 +49,75 @@ const ZoomControls = React.memo(function ZoomControls() {
     background: 'linear-gradient(180deg, #5c4a2e 0%, #3b2a1a 50%, #2a1e12 100%)',
     border: '2px solid #8b6914',
     boxShadow: '0 3px 0 #1a1008, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(139,105,20,0.3), inset 0 -1px 0 rgba(0,0,0,0.3)',
-    /* 鉄のリベット風 */
     outline: '1px solid #2a1e12',
   };
 
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-28 right-3 z-50 flex flex-col items-center gap-1.5"
+      className="fixed bottom-20 right-3 z-[45] flex flex-col items-center gap-1.5"
     >
-      {/* パネルフレーム */}
       <div
-        className="flex flex-col items-center gap-1.5 p-1.5 rounded-none"
+        className="flex flex-col items-center gap-1 p-1.5 rounded-none"
         style={{
           background: 'linear-gradient(180deg, #3a3228 0%, #2a2218 100%)',
           border: '2px solid #5c4a2e',
           boxShadow: '0 2px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(92,74,46,0.2)',
         }}
       >
-        {/* ズームイン - レバーを上に引く */}
+        {/* ズームイン */}
         <button
           onClick={zoomIn}
           disabled={state.scale >= 5}
-          className="flex items-center justify-center w-10 h-10 min-h-[44px] min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          className="flex items-center justify-center w-10 h-9 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
           style={leverBtnStyle}
           aria-label="ズームイン"
         >
-          <span className="dq-title text-lg leading-none">+</span>
+          <span className="dq-title text-base leading-none">+</span>
         </button>
 
-        {/* 中央ダイヤル風インジケーター */}
-        <div
-          className="px-2 py-1 rounded-none"
+        {/* ズーム率 */}
+        <button
+          onClick={fitWidth}
+          className="px-2 py-0.5 rounded-none cursor-pointer select-none active:scale-95"
           style={{
             background: 'radial-gradient(circle, #1a1008 60%, #2a1e12 100%)',
             border: '2px solid #5c4a2e',
             boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(92,74,46,0.2)',
           }}
+          title="幅に合わせる (100%)"
+          aria-label={`${pct}% - クリックで幅に合わせる`}
         >
           <span className="dq-text text-xs whitespace-nowrap" style={{ color: '#d4a017', textShadow: '0 0 6px rgba(212,160,23,0.4)' }}>
             {pct}%
           </span>
-        </div>
+        </button>
 
-        {/* ズームアウト - レバーを下に引く */}
+        {/* ズームアウト */}
         <button
           onClick={zoomOut}
           disabled={state.scale <= 0.25}
-          className="flex items-center justify-center w-10 h-10 min-h-[44px] min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          className="flex items-center justify-center w-10 h-9 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
           style={leverBtnStyle}
           aria-label="ズームアウト"
         >
-          <span className="dq-title text-lg leading-none">-</span>
+          <span className="dq-title text-base leading-none">-</span>
         </button>
 
-        {/* 区切り線（鉄のリベット） */}
-        <div style={{ width: '80%', height: 2, background: 'linear-gradient(90deg, transparent 0%, #5c4a2e 30%, #8b6914 50%, #5c4a2e 70%, transparent 100%)' }} />
-
-        {/* 50%プリセット */}
-        <button
-          onClick={() => setScale(0.5)}
-          className="flex items-center justify-center w-10 h-7 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
-          style={leverBtnStyle}
-          aria-label="50%"
-        >
-          <span className="dq-text text-[10px] leading-none" style={{ color: 'var(--ynk-gold)' }}>50%</span>
-        </button>
-
-        {/* 幅に合わせる */}
-        <button
-          onClick={fitWidth}
-          className="flex items-center justify-center w-10 h-7 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
-          style={leverBtnStyle}
-          aria-label="幅に合わせる"
-          title="幅に合わせる"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
-            <path d="M21 12H3M21 12l-3-3M21 12l-3 3M3 12l3-3M3 12l3 3" />
-          </svg>
-        </button>
+        {/* 区切り線 */}
+        <div style={{ width: '80%', height: 1, background: 'linear-gradient(90deg, transparent 0%, #5c4a2e 30%, #8b6914 50%, #5c4a2e 70%, transparent 100%)' }} />
 
         {/* ページ全体表示 */}
         <button
           onClick={fitPage}
-          className="flex items-center justify-center w-10 h-10 min-h-[44px] min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          className="flex items-center justify-center w-10 h-9 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
           style={leverBtnStyle}
           aria-label="ページ全体表示"
           title="ページ全体表示"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
             <path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" />
           </svg>
-        </button>
-
-        {/* 200%プリセット */}
-        <button
-          onClick={() => setScale(2)}
-          className="flex items-center justify-center w-10 h-7 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
-          style={leverBtnStyle}
-          aria-label="200%"
-        >
-          <span className="dq-text text-[10px] leading-none" style={{ color: 'var(--ynk-gold)' }}>200%</span>
         </button>
       </div>
     </div>
