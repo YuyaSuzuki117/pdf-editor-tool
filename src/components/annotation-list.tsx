@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin, Edit3 } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
@@ -167,6 +167,22 @@ export default function AnnotationList() {
                     </p>
                   )}
                 </div>
+                {ann.type === 'text' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      jumpToAnnotation(ann.page);
+                      window.dispatchEvent(new CustomEvent('edit-annotation', { detail: { annotation: ann } }));
+                      setIsOpen(false);
+                    }}
+                    className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                    style={{ color: '#3b82f6', flexShrink: 0 }}
+                    title="編集"
+                    aria-label={`${typeLabels[ann.type]}を編集`}
+                  >
+                    <Edit3 size={14} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

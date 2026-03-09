@@ -147,6 +147,12 @@ function PDFApp() {
       }
     }
 
+    // Ctrl+F: Search (already handled in search-panel, prevent default here too)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      // Let search-panel handle it
+      return;
+    }
+
     // 矢印キーでページ移動（どのモードでも使用可能）
     if (!e.ctrlKey && !e.metaKey && !e.altKey && s.pdfData && s.toolMode !== 'pages') {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
