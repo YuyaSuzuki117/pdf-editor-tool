@@ -113,7 +113,7 @@ export default function SearchPanel() {
       {!isOpen && (
         <button
           onClick={() => { setIsOpen(true); setTimeout(() => inputRef.current?.focus(), 100); }}
-          className="fixed top-2 right-14 z-[65] dq-btn-small flex items-center justify-center"
+          className="fixed top-2 right-[8.5rem] z-[65] dq-btn-small flex items-center justify-center"
           style={{ minWidth: 36, minHeight: 36, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', borderColor: 'var(--window-border)', color: 'var(--ynk-bone)' }}
           title="検索 (Ctrl+F)"
         >
