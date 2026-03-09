@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin, Edit3 } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin, Edit3, Eye, EyeOff, Download } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
@@ -30,6 +30,7 @@ export default function AnnotationList() {
   const { state, dispatch } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [annotationsVisible, setAnnotationsVisible] = useState(true);
 
   const filtered = useMemo(() => {
     const anns = filter === 'all' ? state.annotations : state.annotations.filter(a => a.type === filter);
@@ -46,6 +47,39 @@ export default function AnnotationList() {
   const jumpToAnnotation = useCallback((page: number) => {
     dispatch({ type: 'SET_PAGE', payload: page });
   }, [dispatch]);
+
+  // アノテーション表示/非表示をCSS classで制御
+  useEffect(() => {
+    const overlay = document.querySelector('.annotation-overlay');
+    if (overlay) {
+      (overlay as HTMLElement).style.opacity = annotationsVisible ? '1' : '0';
+      (overlay as HTMLElement).style.pointerEvents = annotationsVisible ? 'auto' : 'none';
+    }
+  }, [annotationsVisible, state.annotations]);
+
+  const handleExportJSON = useCallback(() => {
+    const data = {
+      fileName: state.file?.name || 'unknown',
+      exportedAt: new Date().toISOString(),
+      annotationCount: state.annotations.length,
+      annotations: state.annotations.map(ann => ({
+        id: ann.id,
+        type: ann.type,
+        page: ann.page,
+        position: ann.position,
+        content: ann.type === 'image' ? '[画像データ]' : ann.content,
+        style: ann.style,
+        createdAt: new Date(ann.createdAt).toISOString(),
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `annotations_${state.file?.name?.replace('.pdf', '') || 'doc'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [state.annotations, state.file]);
 
   if (state.annotations.length === 0) return null;
 
@@ -94,14 +128,34 @@ export default function AnnotationList() {
           {/* ヘッダー */}
           <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: '2px solid #5c4a2e' }}>
             <span className="dq-title text-sm">アノテーション ({state.annotations.length}件)</span>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] cursor-pointer"
-              style={{ color: '#c8a060' }}
-              aria-label="閉じる"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setAnnotationsVisible(!annotationsVisible)}
+                className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] cursor-pointer"
+                style={{ color: annotationsVisible ? 'var(--ynk-gold)' : '#666' }}
+                title={annotationsVisible ? 'アノテーションを非表示' : 'アノテーションを表示'}
+                aria-label={annotationsVisible ? 'アノテーションを非表示' : 'アノテーションを表示'}
+              >
+                {annotationsVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+              <button
+                onClick={handleExportJSON}
+                className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] cursor-pointer"
+                style={{ color: 'var(--ynk-gold)' }}
+                title="アノテーションをJSON出力"
+                aria-label="アノテーションをJSON出力"
+              >
+                <Download size={14} />
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] cursor-pointer"
+                style={{ color: '#c8a060' }}
+                aria-label="閉じる"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           {/* フィルタ */}

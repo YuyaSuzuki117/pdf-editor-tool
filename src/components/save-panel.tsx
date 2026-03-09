@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { FileDown, Image, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileDown, Image, ChevronDown, ChevronUp, FileJson } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import {
@@ -466,6 +466,38 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           <Image size={20} />
           画像として保存（現在のページ）
         </button>
+        {state.annotations.length > 0 && (
+          <button
+            onClick={() => {
+              const data = {
+                fileName: state.file?.name || 'unknown',
+                exportedAt: new Date().toISOString(),
+                annotations: state.annotations.map(ann => ({
+                  type: ann.type,
+                  page: ann.page,
+                  position: ann.position,
+                  content: ann.type === 'image' ? '[画像データ]' : ann.content,
+                  style: ann.style,
+                  createdAt: new Date(ann.createdAt).toISOString(),
+                })),
+              };
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `annotations_${filename.trim() || 'doc'}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              showDqToast('アノテーションをJSONで保存しました', 'success');
+            }}
+            disabled={saving}
+            className="dq-btn w-full flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
+          >
+            <FileJson size={20} />
+            アノテーションをJSON出力
+          </button>
+        )}
       </div>
     </SlidePanel>
   );

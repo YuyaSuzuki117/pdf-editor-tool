@@ -19,6 +19,8 @@ const colors = [
   { label: '赤', value: '#ef4444' },
   { label: '青', value: '#3b82f6' },
   { label: '緑', value: '#22c55e' },
+  { label: '紫', value: '#8b5cf6' },
+  { label: 'オレンジ', value: '#f59e0b' },
   { label: '白', value: '#ffffff' },
 ];
 
@@ -248,12 +250,12 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
         </div>
         <div>
           <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>文字の色</p>
-          <div className="flex gap-3">
+          <div className="flex gap-2 flex-wrap">
             {colors.map((c) => (
               <button
                 key={c.value}
                 onClick={() => setColor(c.value)}
-                className={`dq-color-btn w-10 h-10 ${
+                className={`dq-color-btn w-9 h-9 ${
                   color === c.value ? 'active' : ''
                 }`}
                 style={{ backgroundColor: c.value, borderColor: color === c.value ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
@@ -261,6 +263,9 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
                 aria-label={c.label}
               />
             ))}
+            <label className="w-9 h-9 rounded cursor-pointer overflow-hidden" style={{ border: '3px solid #5c3d2e' }}>
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-full cursor-pointer" style={{ padding: 0, border: 'none' }} />
+            </label>
           </div>
         </div>
         {text.trim() && (

@@ -798,8 +798,8 @@ export default function PDFViewer() {
         {/* アノテーションオーバーレイ */}
         {docReady && canvasSize.width > 0 && (
           <div
-            className="absolute top-0 left-0 pointer-events-none"
-            style={{ width: canvasSize.width, height: canvasSize.height }}
+            className="absolute top-0 left-0 pointer-events-none annotation-overlay"
+            style={{ width: canvasSize.width, height: canvasSize.height, transition: 'opacity 0.2s ease' }}
           >
             {currentAnnotations.map((ann) => (
               <AnnotationItem

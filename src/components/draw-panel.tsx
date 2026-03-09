@@ -8,13 +8,15 @@ import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
 
-const strokeColors = ['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b'];
+const strokeColors = ['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ffffff'];
 const strokeColorNames: Record<string, string> = {
   '#000000': '黒',
   '#ef4444': '赤',
   '#3b82f6': '青',
   '#22c55e': '緑',
   '#f59e0b': 'オレンジ',
+  '#8b5cf6': '紫',
+  '#ffffff': '白',
 };
 const strokeWidths = [1, 2, 4, 8];
 
@@ -298,17 +300,20 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
           {!isEraser && (
             <div>
               <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>ペンの色</p>
-              <div className="flex gap-3">
+              <div className="flex gap-2 flex-wrap">
                 {strokeColors.map((c) => (
                   <button
                     key={c}
                     onClick={() => setStrokeColor(c)}
-                    className={`dq-color-btn w-10 h-10 ${strokeColor === c ? 'active' : ''}`}
+                    className={`dq-color-btn w-9 h-9 ${strokeColor === c ? 'active' : ''}`}
                     style={{ backgroundColor: c, borderColor: strokeColor === c ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
                     title={strokeColorNames[c] || c}
                     aria-label={strokeColorNames[c] || c}
                   />
                 ))}
+                <label className="w-9 h-9 rounded cursor-pointer overflow-hidden" style={{ border: '3px solid #5c3d2e' }}>
+                  <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-full h-full cursor-pointer" style={{ padding: 0, border: 'none' }} />
+                </label>
               </div>
             </div>
           )}

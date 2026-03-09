@@ -15,7 +15,7 @@ const shapeTypes: { type: ShapeType; label: string; icon: string }[] = [
   { type: 'line', label: '直線', icon: '╱' },
 ];
 
-const strokeColors = ['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b'];
+const strokeColors = ['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
 const fillColors = ['#fde047', '#86efac', '#93c5fd', '#f9a8d4', '#fdba74', 'transparent'];
 const strokeWidths = [1, 2, 4, 8];
 
