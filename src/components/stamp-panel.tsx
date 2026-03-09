@@ -22,7 +22,54 @@ const stamps: StampDef[] = [
   { label: '要修正', color: '#92400e', bgColor: 'rgba(146,64,14,0.12)', borderColor: '#f59e0b' },
   { label: 'DRAFT', color: '#6b7280', bgColor: 'rgba(107,114,128,0.12)', borderColor: '#9ca3af' },
   { label: 'CONFIDENTIAL', color: '#7c2d12', bgColor: 'rgba(124,45,18,0.12)', borderColor: '#dc2626' },
+  { label: '検収済', color: '#0e7490', bgColor: 'rgba(14,116,144,0.12)', borderColor: '#06b6d4' },
+  { label: '済', color: '#166534', bgColor: 'rgba(22,101,52,0.12)', borderColor: '#22c55e' },
 ];
+
+// 日付スタンプ用
+function dateStampToDataURL(dateStr: string, size: typeof stampSizes[number]): string {
+  const canvas = document.createElement('canvas');
+  const dpr = 2;
+  canvas.width = size.width * dpr;
+  canvas.height = size.height * dpr;
+  const ctx = canvas.getContext('2d')!;
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = 'rgba(30,64,175,0.08)';
+  ctx.fillRect(0, 0, size.width, size.height);
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(2, 2, size.width - 4, size.height - 4);
+  ctx.fillStyle = '#1e40af';
+  ctx.font = `bold ${size.fontSize * 0.7}px "Noto Sans JP", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(dateStr, size.width / 2, size.height / 2);
+  return canvas.toDataURL('image/png');
+}
+
+function customStampToDataURL(text: string, stampColor: string, size: typeof stampSizes[number]): string {
+  const canvas = document.createElement('canvas');
+  const dpr = 2;
+  canvas.width = size.width * dpr;
+  canvas.height = size.height * dpr;
+  const ctx = canvas.getContext('2d')!;
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = stampColor + '1a';
+  ctx.fillRect(0, 0, size.width, size.height);
+  ctx.strokeStyle = stampColor;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(3, 3, size.width - 6, size.height - 6);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(6, 6, size.width - 12, size.height - 12);
+  ctx.fillStyle = stampColor;
+  const maxFontSize = size.fontSize;
+  const scaledSize = Math.min(maxFontSize, (size.width - 20) / text.length * 1.6);
+  ctx.font = `bold ${scaledSize}px "DotGothic16", "Noto Sans JP", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, size.width / 2, size.height / 2);
+  return canvas.toDataURL('image/png');
+}
 
 const stampSizes: { label: string; fontSize: number; width: number; height: number }[] = [
   { label: '小', fontSize: 14, width: 80, height: 40 },
@@ -69,6 +116,9 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
   // --- スタンプ ---
   const [selectedStamp, setSelectedStamp] = useState<StampDef | null>(null);
   const [stampSizeIdx, setStampSizeIdx] = useState(1);
+  const [customStampText, setCustomStampText] = useState('');
+  const [customStampColor, setCustomStampColor] = useState('#ef4444');
+  const [useCustomStamp, setUseCustomStamp] = useState(false);
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);
   const [tapRenderScale, setTapRenderScale] = useState(1);
 
@@ -107,9 +157,17 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
 
   // --- スタンプ配置 ---
   const handlePlaceStamp = useCallback(() => {
-    if (!selectedStamp || !tapPos) return;
+    if (!tapPos) return;
     const size = stampSizes[stampSizeIdx];
-    const dataURL = stampToDataURL(selectedStamp, size);
+    let dataURL: string;
+
+    if (useCustomStamp && customStampText.trim()) {
+      dataURL = customStampToDataURL(customStampText.trim(), customStampColor, size);
+    } else if (selectedStamp) {
+      dataURL = stampToDataURL(selectedStamp, size);
+    } else {
+      return;
+    }
 
     const annotation: Annotation = {
       id: crypto.randomUUID(),
@@ -124,12 +182,39 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
     showDqToast('スタンプを配置しました！', 'success');
     setTapPos(null);
-  }, [selectedStamp, tapPos, stampSizeIdx, state.currentPage, tapRenderScale, dispatch]);
+  }, [selectedStamp, tapPos, stampSizeIdx, state.currentPage, tapRenderScale, dispatch, useCustomStamp, customStampText, customStampColor]);
+
+  // 日付スタンプ配置
+  const handlePlaceDateStamp = useCallback(() => {
+    if (!tapPos) return;
+    const size = stampSizes[stampSizeIdx];
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+    const dataURL = dateStampToDataURL(dateStr, size);
+
+    const annotation: Annotation = {
+      id: crypto.randomUUID(),
+      type: 'image',
+      page: state.currentPage,
+      position: tapPos,
+      content: dataURL,
+      style: { width: size.width, height: size.height },
+      renderScale: tapRenderScale,
+      createdAt: Date.now(),
+    };
+    dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
+    showDqToast('日付スタンプを配置しました！', 'success');
+    setTapPos(null);
+  }, [tapPos, stampSizeIdx, state.currentPage, tapRenderScale, dispatch]);
 
   // tapPos変更時に自動配置
   useEffect(() => {
-    if (tab === 'stamp' && selectedStamp && tapPos) {
-      handlePlaceStamp();
+    if (tab === 'stamp' && tapPos) {
+      if (useCustomStamp && customStampText.trim()) {
+        handlePlaceStamp();
+      } else if (selectedStamp) {
+        handlePlaceStamp();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tapPos]);
@@ -297,7 +382,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
   ];
 
   const isReady = (() => {
-    if (tab === 'stamp') return !!selectedStamp;
+    if (tab === 'stamp') return useCustomStamp ? !!customStampText.trim() : !!selectedStamp;
     if (tab === 'signature') return !!sigDataURL;
     if (tab === 'image') return !!imageDataURL;
     return false;
@@ -369,7 +454,60 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
               </div>
             </div>
 
-            {selectedStamp ? (
+            {/* 日付スタンプ */}
+            <button
+              onClick={() => {
+                if (!tapPos) {
+                  showDqToast('先にPDFをタップしてください', 'info');
+                  return;
+                }
+                handlePlaceDateStamp();
+              }}
+              className="dq-btn w-full flex items-center justify-center gap-2 text-sm"
+              style={{ background: 'linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%)', borderColor: '#3b82f6' }}
+            >
+              📅 今日の日付スタンプを配置
+            </button>
+
+            {/* カスタムスタンプ */}
+            <div style={{ border: '1px solid rgba(92,74,46,0.3)', borderRadius: 4, padding: '10px 12px' }}>
+              <label className="flex items-center gap-2 cursor-pointer mb-2">
+                <input
+                  type="checkbox"
+                  checked={useCustomStamp}
+                  onChange={(e) => {
+                    setUseCustomStamp(e.target.checked);
+                    if (e.target.checked) setSelectedStamp(null);
+                  }}
+                  style={{ accentColor: '#d4a017', width: 18, height: 18 }}
+                />
+                <span className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>カスタムスタンプ</span>
+              </label>
+              {useCustomStamp && (
+                <div className="space-y-2">
+                  <input
+                    value={customStampText}
+                    onChange={(e) => setCustomStampText(e.target.value)}
+                    placeholder="スタンプのテキスト..."
+                    className="dq-input w-full text-sm"
+                    maxLength={20}
+                  />
+                  <div className="flex gap-2 items-center">
+                    <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>色:</span>
+                    {['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'].map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setCustomStampColor(c)}
+                        className="w-7 h-7 rounded"
+                        style={{ backgroundColor: c, border: customStampColor === c ? '3px solid #d4a017' : '2px solid #5c3d2e' }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {(selectedStamp || (useCustomStamp && customStampText.trim())) ? (
               !tapPos ? (
                 <div
                   className="dq-message-box"
@@ -386,11 +524,11 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
                   </p>
                 </div>
               ) : null
-            ) : (
+            ) : !useCustomStamp ? (
               <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '12px 16px' }}>
                 <p className="dq-text text-sm opacity-60">上からスタンプを選んでください</p>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
