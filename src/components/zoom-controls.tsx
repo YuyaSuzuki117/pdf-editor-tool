@@ -61,7 +61,7 @@ const ZoomControls = React.memo(function ZoomControls() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-24 right-3 z-50 flex flex-col items-center gap-1.5"
+      className="fixed bottom-28 right-3 z-50 flex flex-col items-center gap-1.5"
     >
       {/* パネルフレーム */}
       <div

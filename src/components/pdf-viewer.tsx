@@ -512,8 +512,6 @@ export default function PDFViewer() {
   const [fitScale, setFitScale] = useState(1);
   const [textCursor, setTextCursor] = useState<{ x: number; y: number } | null>(null);
   const [pageOpacity, setPageOpacity] = useState(1);
-  const [pageJumpInput, setPageJumpInput] = useState(false);
-  const [pageJumpValue, setPageJumpValue] = useState('');
   const prevPageRef = useRef(state.currentPage);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -861,80 +859,8 @@ export default function PDFViewer() {
           />
         )}
       </div>
-      {/* ページナビゲーションコントロール */}
-      {docReady && state.numPages > 1 && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1">
-          <button
-            onClick={() => state.currentPage > 1 && dispatch({ type: 'SET_PAGE', payload: state.currentPage - 1 })}
-            disabled={state.currentPage <= 1}
-            className="flex items-center justify-center w-9 h-9 min-w-[36px] min-h-[36px] cursor-pointer select-none active:scale-90 transition-transform disabled:opacity-30"
-            style={{
-              background: 'linear-gradient(180deg, rgba(59,42,26,0.95) 0%, rgba(26,16,8,0.95) 100%)',
-              border: '2px solid #5c4a2e',
-              borderRadius: 4,
-            }}
-            aria-label="前のページ"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          {pageJumpInput ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const p = parseInt(pageJumpValue, 10);
-                if (p >= 1 && p <= state.numPages) dispatch({ type: 'SET_PAGE', payload: p });
-                setPageJumpInput(false);
-              }}
-              className="flex items-center"
-            >
-              <input
-                type="number"
-                min={1}
-                max={state.numPages}
-                value={pageJumpValue}
-                onChange={(e) => setPageJumpValue(e.target.value)}
-                onBlur={() => setPageJumpInput(false)}
-                autoFocus
-                className="w-12 h-9 text-center text-sm bg-black/80 text-white border-2 border-[var(--ynk-gold)] rounded"
-                style={{ fontFamily: 'monospace' }}
-              />
-              <span className="text-xs text-white/60 mx-1">/ {state.numPages}</span>
-            </form>
-          ) : (
-            <button
-              onClick={() => { setPageJumpValue(String(state.currentPage)); setPageJumpInput(true); }}
-              className="h-9 px-3 flex items-center justify-center cursor-pointer select-none"
-              style={{
-                background: 'linear-gradient(180deg, rgba(59,42,26,0.95) 0%, rgba(26,16,8,0.95) 100%)',
-                border: '2px solid #5c4a2e',
-                borderRadius: 4,
-                minWidth: 60,
-              }}
-              title="クリックでページジャンプ"
-              aria-label={`ページ ${state.currentPage} / ${state.numPages}。クリックでジャンプ`}
-            >
-              <span className="dq-text text-xs" style={{ color: 'var(--ynk-gold)' }}>
-                {state.currentPage} / {state.numPages}
-              </span>
-            </button>
-          )}
-          <button
-            onClick={() => state.currentPage < state.numPages && dispatch({ type: 'SET_PAGE', payload: state.currentPage + 1 })}
-            disabled={state.currentPage >= state.numPages}
-            className="flex items-center justify-center w-9 h-9 min-w-[36px] min-h-[36px] cursor-pointer select-none active:scale-90 transition-transform disabled:opacity-30"
-            style={{
-              background: 'linear-gradient(180deg, rgba(59,42,26,0.95) 0%, rgba(26,16,8,0.95) 100%)',
-              border: '2px solid #5c4a2e',
-              borderRadius: 4,
-            }}
-            aria-label="次のページ"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
-      )}
-      {/* 単一ページ時のページラベル */}
-      {pageLabel && state.numPages <= 1 && (
+      {/* ページラベル（スワイプ時表示） */}
+      {pageLabel && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-1.5 rounded-full z-40 pointer-events-none">
           {pageLabel}
         </div>

@@ -114,8 +114,8 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
 
   return (
     <div
-      className={allowInteraction ? "fixed bottom-0 left-0 right-0 z-50 flex items-end" : "fixed inset-0 z-50 flex items-end"}
-      style={{ pointerEvents: allowInteraction ? 'none' : 'auto' }}
+      className={allowInteraction ? "fixed left-0 right-0 z-[55] flex items-end" : "fixed inset-0 z-[55] flex items-end"}
+      style={{ pointerEvents: allowInteraction ? 'none' : 'auto', bottom: allowInteraction ? '56px' : 0 }}
     >
       {!allowInteraction && (
         <div
@@ -218,7 +218,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
           className="px-3 overflow-y-auto"
           style={{
             maxHeight: contentMaxHeight,
-            paddingBottom: panelSize === 'minimized' ? 0 : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+            paddingBottom: panelSize === 'minimized' ? 0 : '1rem',
             transition: 'max-height 0.25s ease',
             overflow: panelSize === 'minimized' ? 'hidden' : 'auto',
           }}
