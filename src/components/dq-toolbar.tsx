@@ -125,7 +125,7 @@ const DqToolbar = React.memo(function DqToolbar() {
 
   return (
     <div
-      className="dq-window rounded-none border-x-0 border-b-0 z-[60] shrink-0 ynk-stone-floor"
+      className="dq-window rounded-none border-x-0 border-b-0 z-50 shrink-0 ynk-stone-floor"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         background: 'linear-gradient(180deg, #3a3228 0%, #2a2218 50%, #1e1810 100%)',
