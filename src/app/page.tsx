@@ -23,6 +23,8 @@ import ShortcutHelp from '@/components/shortcut-help';
 import PageThumbnails from '@/components/page-thumbnails';
 import { showDqToast } from '@/lib/toast';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/auto-draft';
+import { mergePdfs } from '@/lib/pdf-editor';
+import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import type { ToolMode } from '@/types/pdf';
 
 function PDFApp() {
@@ -173,6 +175,28 @@ function PDFApp() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  // PDF表示中にドロップされたPDFを結合
+  const handleDropMerge = useCallback(async (e: React.DragEvent) => {
+    if (!state.pdfData) return;
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.name.toLowerCase().endsWith('.pdf')) return;
+    try {
+      const newBuffer = await file.arrayBuffer();
+      const merged = await mergePdfs([state.pdfData, newBuffer]);
+      const doc = await loadDocumentFromBytes(merged.buffer as ArrayBuffer);
+      const numPages = doc.numPages;
+      doc.destroy();
+      dispatch({
+        type: 'UPDATE_PDF_DATA',
+        payload: { pdfData: merged.buffer as ArrayBuffer, numPages },
+      });
+      showDqToast(`${file.name}を結合しました (${numPages}ページ)`, 'success');
+    } catch {
+      showDqToast('PDFの結合に失敗しました', 'error');
+    }
+  }, [state.pdfData, dispatch]);
+
   const closePanel = () => dispatch({ type: 'SET_TOOL', payload: 'view' });
 
   if (!state.pdfData) {
@@ -185,7 +209,11 @@ function PDFApp() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col">
+    <div
+      className="h-[100dvh] flex flex-col"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDropMerge}
+    >
       <DqHeader />
       <SearchPanel />
       <PDFViewer />

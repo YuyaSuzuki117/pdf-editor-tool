@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { FileDown, Image, ChevronDown, ChevronUp, FileJson } from 'lucide-react';
+import { FileDown, Image, ChevronDown, ChevronUp, FileJson, Upload } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import {
@@ -15,7 +15,7 @@ import type { BatchAnnotation } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
 import { DqSlime } from '@/components/dq-slime';
 import { YuunamaMushroomMan } from '@/components/dq-characters';
-import type { TextStyle, DrawStyle, HighlightStyle, ShapeStyle } from '@/types/pdf';
+import type { TextStyle, DrawStyle, HighlightStyle, ShapeStyle, Annotation } from '@/types/pdf';
 
 export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
@@ -338,6 +338,50 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   };
 
+  const handleImportJSON = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data.annotations || !Array.isArray(data.annotations)) {
+          showDqToast('無効なJSONファイルです', 'error');
+          return;
+        }
+        let imported = 0;
+        for (const ann of data.annotations) {
+          if (!ann.type || !ann.page || !ann.position) continue;
+          // Skip image annotations from JSON (they contain placeholder text)
+          if (ann.type === 'image' && (!ann.content || ann.content === '[画像データ]')) continue;
+          const newAnn: Annotation = {
+            id: crypto.randomUUID(),
+            type: ann.type,
+            page: ann.page,
+            position: { x: ann.position.x || 0, y: ann.position.y || 0 },
+            content: ann.content || '',
+            style: ann.style || {},
+            renderScale: ann.renderScale,
+            createdAt: Date.now(),
+          };
+          dispatch({ type: 'ADD_ANNOTATION', payload: newAnn });
+          imported++;
+        }
+        if (imported > 0) {
+          showDqToast(`${imported}件のアノテーションを読み込みました`, 'success');
+        } else {
+          showDqToast('読み込めるアノテーションがありませんでした', 'info');
+        }
+      } catch {
+        showDqToast('JSONファイルの読み込みに失敗しました', 'error');
+      }
+    };
+    input.click();
+  }, [dispatch]);
+
   const annotationSummary = (() => {
     const counts: Record<string, number> = {};
     for (const ann of state.annotations) {
@@ -498,6 +542,15 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             アノテーションをJSON出力
           </button>
         )}
+        <button
+          onClick={handleImportJSON}
+          disabled={saving}
+          className="dq-btn w-full flex items-center justify-center gap-2"
+          style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
+        >
+          <Upload size={20} />
+          アノテーションJSON読込
+        </button>
       </div>
     </SlidePanel>
   );

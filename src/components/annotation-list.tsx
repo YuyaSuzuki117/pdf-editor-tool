@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin, Edit3, Eye, EyeOff, Download } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus } from 'lucide-react';
+import { showDqToast } from '@/lib/toast';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
@@ -255,6 +256,34 @@ export default function AnnotationList() {
                 >
                   <Copy size={14} />
                 </button>
+                {state.numPages > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      let count = 0;
+                      for (let p = 1; p <= state.numPages; p++) {
+                        if (p === ann.page) continue;
+                        dispatch({
+                          type: 'ADD_ANNOTATION',
+                          payload: {
+                            ...ann,
+                            id: crypto.randomUUID(),
+                            page: p,
+                            createdAt: Date.now() + p,
+                          },
+                        });
+                        count++;
+                      }
+                      showDqToast(`${count}ページにコピーしました`, 'success');
+                    }}
+                    className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                    style={{ color: '#22c55e', flexShrink: 0 }}
+                    title="全ページにコピー"
+                    aria-label={`${typeLabels[ann.type]}を全ページにコピー`}
+                  >
+                    <CopyPlus size={14} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

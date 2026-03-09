@@ -1,13 +1,18 @@
 'use client';
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
+import { getPageText } from '@/lib/pdf-engine';
+import { rotatePage } from '@/lib/pdf-editor';
+import { loadDocumentFromBytes } from '@/lib/pdf-engine';
+import { showDqToast } from '@/lib/toast';
 
 const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
 
 const ZoomControls = React.memo(function ZoomControls() {
   const { state, dispatch } = usePDF();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [copying, setCopying] = useState(false);
 
   const setScale = useCallback(
     (s: number) => dispatch({ type: 'SET_SCALE', payload: s }),
@@ -42,6 +47,42 @@ const ZoomControls = React.memo(function ZoomControls() {
     const scaleForWidth = (containerW / canvasW) * currentScale;
     setScale(Math.min(scaleForHeight, scaleForWidth));
   }, [setScale, state.scale]);
+
+  // ページ回転
+  const handleRotate = useCallback(async () => {
+    if (!state.pdfData) return;
+    try {
+      const newBytes = await rotatePage(state.pdfData, state.currentPage - 1);
+      dispatch({
+        type: 'UPDATE_PDF_DATA',
+        payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: state.numPages },
+      });
+      showDqToast('ページを回転しました', 'success');
+    } catch {
+      showDqToast('回転に失敗しました', 'error');
+    }
+  }, [state.pdfData, state.currentPage, state.numPages, dispatch]);
+
+  // テキストコピー
+  const handleCopyText = useCallback(async () => {
+    if (!state.pdfData || copying) return;
+    setCopying(true);
+    try {
+      const doc = await loadDocumentFromBytes(state.pdfData);
+      const text = await getPageText(doc, state.currentPage);
+      doc.destroy();
+      if (!text.trim()) {
+        showDqToast('このページにテキストがありません', 'info');
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      showDqToast(`P.${state.currentPage}のテキストをコピーしました`, 'success');
+    } catch {
+      showDqToast('テキストコピーに失敗しました', 'error');
+    } finally {
+      setCopying(false);
+    }
+  }, [state.pdfData, state.currentPage, copying]);
 
   const pct = Math.round(state.scale * 100);
 
@@ -118,6 +159,40 @@ const ZoomControls = React.memo(function ZoomControls() {
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
             <path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" />
           </svg>
+        </button>
+
+        {/* 区切り線 */}
+        <div style={{ width: '80%', height: 1, background: 'linear-gradient(90deg, transparent 0%, #5c4a2e 30%, #8b6914 50%, #5c4a2e 70%, transparent 100%)' }} />
+
+        {/* ページ回転 */}
+        <button
+          onClick={handleRotate}
+          className="flex items-center justify-center w-10 h-9 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          style={leverBtnStyle}
+          aria-label="ページ回転"
+          title="ページを90°回転"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+            <path d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        </button>
+
+        {/* テキストコピー */}
+        <button
+          onClick={handleCopyText}
+          disabled={copying}
+          className="flex items-center justify-center w-10 h-9 min-w-[44px] rounded-none cursor-pointer select-none active:scale-95 transition-transform"
+          style={leverBtnStyle}
+          aria-label="テキストコピー"
+          title="このページのテキストをコピー"
+        >
+          {copying ? (
+            <div className="dq-spinner-sm" style={{ width: 14, height: 14 }} />
+          ) : (
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6h2v2H4zM4 10h2v2H4zM4 14h2v2H4zM10 6h10M10 10h10M10 14h7" />
+            </svg>
+          )}
         </button>
       </div>
     </div>
