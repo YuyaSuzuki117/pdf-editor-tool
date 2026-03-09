@@ -669,3 +669,29 @@ textarea:focus-visible {
 .dq-text {
   color: #f0e4d0;
 }
+
+/* ===== モバイル最適化 ===== */
+@media (max-width: 640px) {
+  /* ツールバーの文字を少し小さく、パディング詰め */
+  .dq-btn {
+    padding: 8px 14px;
+    min-height: 44px;
+  }
+  /* ページナビボタンを少し大きく */
+  .pdf-canvas-container {
+    padding-bottom: 60px;
+  }
+}
+
+/* 印刷用スタイル */
+@media print {
+  .dq-window, [role="toolbar"], .fixed {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+  .pdf-canvas-container {
+    overflow: visible !important;
+  }
+}
