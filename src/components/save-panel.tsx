@@ -228,19 +228,19 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           }
         } else if (ann.type === 'text') {
           const style = ann.style as TextStyle;
-          const renderScale = canvas.dataset.renderScale ? parseFloat(canvas.dataset.renderScale) : 1;
+          const scaleRatio = canvas.width / canvas.offsetWidth;
           ctx.save();
           ctx.fillStyle = style.color;
-          const scaledSize = style.fontSize * renderScale;
+          // fitScaleでCSS上のサイズ→scaleRatioでcanvas内部解像度に変換
+          const canvasFontSize = style.fontSize * scaleRatio;
           const family = style.fontFamily || 'Helvetica, Arial, sans-serif';
-          ctx.font = `${style.bold ? 'bold ' : ''}${style.italic ? 'italic ' : ''}${scaledSize}px ${family}`;
+          ctx.font = `${style.bold ? 'bold ' : ''}${style.italic ? 'italic ' : ''}${canvasFontSize}px ${family}`;
           ctx.textBaseline = 'top';
-          const scaleRatio = canvas.width / canvas.offsetWidth;
           const x = ann.position.x * scaleRatio;
           const y = ann.position.y * scaleRatio;
           const lines = ann.content.split('\n');
           for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], x, y + i * scaledSize * scaleRatio * 1.2);
+            ctx.fillText(lines[i], x, y + i * canvasFontSize * 1.2);
           }
           ctx.restore();
         } else if (ann.type === 'shape') {
