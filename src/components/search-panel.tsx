@@ -18,6 +18,8 @@ export default function SearchPanel() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pageTextsCache = useRef<Map<number, string>>(new Map());
+  const cachedPdfDataRef = useRef<ArrayBuffer | null>(null);
   const totalMatches = results.reduce((sum, r) => sum + r.count, 0);
 
   // Ctrl+F で開閉
@@ -43,11 +45,21 @@ export default function SearchPanel() {
     }
     setSearching(true);
     try {
+      // PDF変更時にキャッシュクリア
+      if (cachedPdfDataRef.current !== state.pdfData) {
+        pageTextsCache.current.clear();
+        cachedPdfDataRef.current = state.pdfData;
+      }
+
       const doc = await loadDocumentFromBytes(state.pdfData);
       const found: SearchResult[] = [];
       const q = query.toLowerCase();
       for (let i = 1; i <= doc.numPages; i++) {
-        const text = await getPageText(doc, i);
+        let text = pageTextsCache.current.get(i);
+        if (text === undefined) {
+          text = await getPageText(doc, i);
+          pageTextsCache.current.set(i, text);
+        }
         const lower = text.toLowerCase();
         let count = 0;
         let pos = 0;
@@ -101,7 +113,7 @@ export default function SearchPanel() {
       {!isOpen && (
         <button
           onClick={() => { setIsOpen(true); setTimeout(() => inputRef.current?.focus(), 100); }}
-          className="fixed top-2 right-14 z-50 dq-btn-small flex items-center justify-center"
+          className="fixed top-2 right-14 z-[65] dq-btn-small flex items-center justify-center"
           style={{ minWidth: 36, minHeight: 36, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', borderColor: 'var(--window-border)', color: 'var(--ynk-bone)' }}
           title="検索 (Ctrl+F)"
         >
@@ -112,7 +124,7 @@ export default function SearchPanel() {
       {/* 検索バー */}
       {isOpen && (
         <div
-          className="fixed top-0 left-0 right-0 z-[55] dq-window"
+          className="fixed top-0 left-0 right-0 z-[65] dq-window"
           style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '8px 12px' }}
         >
           <div className="flex items-center gap-2">

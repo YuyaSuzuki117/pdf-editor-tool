@@ -22,10 +22,9 @@ const strokeWidths = [1, 2, 4, 8];
 export default function ShapePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const settings = loadSettings();
-  const [shapeType, setShapeType] = useState<ShapeType>((settings.shapeType as ShapeType) || 'rectangle');
-  const [strokeColor, setStrokeColor] = useState(settings.shapeStrokeColor || '#ef4444');
-  const [strokeWidth, setStrokeWidth] = useState(settings.shapeStrokeWidth || 2);
+  const [shapeType, setShapeType] = useState<ShapeType>(() => (loadSettings().shapeType as ShapeType) || 'rectangle');
+  const [strokeColor, setStrokeColor] = useState(() => loadSettings().shapeStrokeColor || '#ef4444');
+  const [strokeWidth, setStrokeWidth] = useState(() => loadSettings().shapeStrokeWidth || 2);
   const [filled, setFilled] = useState(false);
   const [fillColor, setFillColor] = useState('#fde047');
   const startPos = useRef<{ x: number; y: number } | null>(null);

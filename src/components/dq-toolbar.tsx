@@ -14,7 +14,7 @@ interface ToolDef {
 const tools: ToolDef[] = [
   {
     mode: 'view',
-    label: '👁 みる',
+    label: 'みる',
     title: '表示モード',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -25,7 +25,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'text',
-    label: '✏️ 文字',
+    label: '文字',
     title: 'テキスト追加',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -37,7 +37,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'draw',
-    label: '🖊 描く',
+    label: '描く',
     title: 'フリーハンド描画',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -50,7 +50,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'shape',
-    label: '🔷 図形',
+    label: '図形',
     title: '図形描画（矩形・円・矢印・直線）',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,7 +61,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'highlight',
-    label: '🔦 マーカー',
+    label: 'マーカー',
     title: 'マーカー・下線・取消線・墨消し',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -72,7 +72,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'image',
-    label: '印 スタンプ',
+    label: 'スタンプ',
     title: 'スタンプ・署名',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -85,7 +85,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'pages',
-    label: '📄 ページ',
+    label: 'ページ',
     title: 'ページ管理・結合・分割',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -96,7 +96,7 @@ const tools: ToolDef[] = [
   },
   {
     mode: 'save',
-    label: '💾 保存',
+    label: '保存',
     title: '保存・書き出し',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -145,7 +145,7 @@ const DqToolbar = React.memo(function DqToolbar() {
               <polyline points="1 4 1 10 7 10" />
               <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
-            <span className="dq-text text-[9px] leading-tight whitespace-nowrap">戻す</span>
+            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">戻す</span>
           </button>
         )}
         {redoStackSize > 0 && (
@@ -159,7 +159,7 @@ const DqToolbar = React.memo(function DqToolbar() {
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
             </svg>
-            <span className="dq-text text-[9px] leading-tight whitespace-nowrap">進む</span>
+            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">進む</span>
           </button>
         )}
         {tools.map(({ mode, label, icon, title }) => {
@@ -182,7 +182,7 @@ const DqToolbar = React.memo(function DqToolbar() {
             >
               {active && (
                 <span
-                  className="absolute left-0 top-1/2 -translate-y-1/2 text-[9px] text-[var(--ynk-gold)]"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 text-[10px] text-[var(--ynk-gold)]"
                   style={{ animation: 'ynk-dig 0.4s infinite' }}
                 >
                   ⛏
@@ -195,7 +195,7 @@ const DqToolbar = React.memo(function DqToolbar() {
                 </>
               )}
               <span className={active ? 'ynk-active-sparkle' : ''}>{icon}</span>
-              <span className="dq-text text-[9px] leading-tight whitespace-nowrap">{label}</span>
+              <span className="dq-text text-[10px] leading-tight whitespace-nowrap">{label}</span>
             </button>
           );
         })}

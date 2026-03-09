@@ -108,7 +108,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
         page: state.currentPage,
         position: tapPos,
         content: text,
-        style: { fontSize, color, fontFamily },
+        style: { fontSize, color, fontFamily, bold, italic },
         renderScale: tapRenderScale,
         createdAt: Date.now(),
       };
@@ -275,7 +275,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
           disabled={!text.trim() || !tapPos}
           className="dq-btn w-full"
         >
-          {editingId ? '更新する' : '追加する（続けて追加可能）'}
+          {editingId ? '更新する' : '追加する'}
         </button>
         {editingId && (
           <button

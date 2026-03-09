@@ -31,9 +31,8 @@ const markupModes: { mode: MarkupMode; label: string; desc: string }[] = [
 
 export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
-  const settings = loadSettings();
-  const [markupMode, setMarkupMode] = useState<MarkupMode>((settings.highlightMode as MarkupMode) || 'highlight');
-  const [color, setColor] = useState(settings.highlightColor || '#fde047');
+  const [markupMode, setMarkupMode] = useState<MarkupMode>(() => (loadSettings().highlightMode as MarkupMode) || 'highlight');
+  const [color, setColor] = useState(() => loadSettings().highlightColor || '#fde047');
   const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [overlayBounds, setOverlayBounds] = useState<{ left: number; top: number; width: number; height: number }>({ left: 0, top: 0, width: 0, height: 0 });
   const startPos = useRef<{ x: number; y: number } | null>(null);
