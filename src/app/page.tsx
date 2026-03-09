@@ -20,6 +20,7 @@ import SearchPanel from '@/components/search-panel';
 import { ErrorBoundary } from '@/components/error-boundary';
 import DqConfirmProvider from '@/components/dq-confirm';
 import ShortcutHelp from '@/components/shortcut-help';
+import PageThumbnails from '@/components/page-thumbnails';
 import { showDqToast } from '@/lib/toast';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/auto-draft';
 import type { ToolMode } from '@/types/pdf';
@@ -188,6 +189,7 @@ function PDFApp() {
       <DqHeader />
       <SearchPanel />
       <PDFViewer />
+      <PageThumbnails />
       <ZoomControls />
       <DqToolbar />
       <TextEditorPanel isOpen={state.toolMode === 'text'} onClose={closePanel} />
