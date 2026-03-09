@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Undo2 } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import SlidePanel from './slide-panel';
@@ -79,6 +79,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
   const [sigHasContent, setSigHasContent] = useState(false);
   const [sigDataURL, setSigDataURL] = useState<string | null>(null);
   const [sigWidth, setSigWidth] = useState(150);
+  const sigUndoStack = useRef<ImageData[]>([]);
 
   // --- 画像 ---
   const [imageDataURL, setImageDataURL] = useState<string | null>(null);
@@ -163,6 +164,14 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
 
   const sigStart = (e: React.TouchEvent | React.MouseEvent) => {
     e.preventDefault();
+    // Save canvas state for undo before starting new stroke
+    const canvas = sigCanvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        sigUndoStack.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      }
+    }
     sigDrawing.current = true;
     sigLastPos.current = getSigPos(e);
   };
@@ -196,7 +205,22 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     }
   };
 
+  const handleUndoSig = useCallback(() => {
+    const canvas = sigCanvasRef.current;
+    if (!canvas || sigUndoStack.current.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const prev = sigUndoStack.current.pop()!;
+    ctx.putImageData(prev, 0, 0);
+    // Check if canvas is now empty
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hasPixels = data.some((v, i) => i % 4 === 3 && v > 0);
+    setSigHasContent(hasPixels);
+    setSigDataURL(hasPixels ? canvas.toDataURL('image/png') : null);
+  }, []);
+
   const handleClearSig = () => {
+    sigUndoStack.current = [];
     initSigCanvas();
   };
 
@@ -399,6 +423,13 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
             </div>
             <div className="flex gap-2">
               <button
+                onClick={handleUndoSig}
+                className="dq-btn-small flex items-center justify-center gap-1 min-h-[40px] px-4"
+                style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
+              >
+                <Undo2 size={16} /> 戻す
+              </button>
+              <button
                 onClick={handleClearSig}
                 className="dq-btn-small flex items-center justify-center gap-1 min-h-[40px] px-4"
                 style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
@@ -451,7 +482,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/jpg"
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -459,7 +490,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
               onClick={() => fileInputRef.current?.click()}
               className="dq-btn w-full flex items-center justify-center gap-2"
             >
-              画像ファイルを選択 (PNG/JPG)
+              画像ファイルを選択 (PNG/JPG/WebP/GIF)
             </button>
 
             {imageDataURL && (
