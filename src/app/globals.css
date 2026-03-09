@@ -683,6 +683,24 @@ textarea:focus-visible {
   }
 }
 
+/* ===== ページサムネイル ===== */
+.page-thumbnail-strip {
+  scrollbar-width: thin;
+  scrollbar-color: #5c3d2e #1e1508;
+}
+.page-thumbnail-strip::-webkit-scrollbar { width: 4px; }
+.page-thumbnail-strip::-webkit-scrollbar-track { background: #1e1508; }
+.page-thumbnail-strip::-webkit-scrollbar-thumb { background: #5c3d2e; border-radius: 2px; }
+
+/* ===== カスタムカラーピッカー ===== */
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
 /* 印刷用スタイル */
 @media print {
   .dq-window, [role="toolbar"], .fixed {
