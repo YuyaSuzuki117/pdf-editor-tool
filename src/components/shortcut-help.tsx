@@ -9,13 +9,15 @@ const shortcuts = [
   { keys: 'Ctrl+F', desc: 'テキスト検索' },
   { keys: 'Escape', desc: 'ツールモード解除 / パネル閉じる' },
   { keys: '1-8', desc: 'ツール切替 (表示/テキスト/描画/図形/マーカー/画像/ページ/保存)' },
-  { keys: '\u2190 \u2192', desc: 'ページ移動 (またはナビボタン)' },
+  { keys: '\u2190 \u2192', desc: 'ページ移動' },
   { keys: 'Ctrl+Wheel', desc: 'ズーム' },
   { keys: 'Ctrl + / -', desc: 'ズームイン/アウト' },
   { keys: 'Ctrl+0', desc: 'ズームリセット (幅に合わせる)' },
   { keys: 'ページ番号タップ', desc: '直接ページジャンプ' },
   { keys: 'テキストをダブルクリック', desc: 'テキスト再編集' },
   { keys: 'ダブルタップ (表示モード)', desc: 'ズームリセット' },
+  { keys: 'R', desc: '現在ページを90°回転' },
+  { keys: 'PDFをドロップ', desc: '結合 (PDF表示中)' },
   { keys: '?', desc: 'このヘルプを表示' },
 ];
 

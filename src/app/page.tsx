@@ -150,6 +150,13 @@ function PDFApp() {
       }
     }
 
+    // R: Quick rotate current page
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && s.pdfData && e.key === 'r') {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('quick-rotate'));
+      return;
+    }
+
     // Ctrl+F: Search (already handled in search-panel, prevent default here too)
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
       // Let search-panel handle it

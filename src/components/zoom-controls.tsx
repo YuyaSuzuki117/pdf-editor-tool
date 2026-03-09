@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { getPageText } from '@/lib/pdf-engine';
 import { rotatePage } from '@/lib/pdf-editor';
@@ -62,6 +62,13 @@ const ZoomControls = React.memo(function ZoomControls() {
       showDqToast('回転に失敗しました', 'error');
     }
   }, [state.pdfData, state.currentPage, state.numPages, dispatch]);
+
+  // R キーで回転イベントを受信
+  useEffect(() => {
+    const handler = () => { handleRotate(); };
+    window.addEventListener('quick-rotate', handler);
+    return () => window.removeEventListener('quick-rotate', handler);
+  }, [handleRotate]);
 
   // テキストコピー
   const handleCopyText = useCallback(async () => {
