@@ -119,6 +119,12 @@ function PDFApp() {
       if (s.pdfData) dispatch({ type: 'SET_TOOL', payload: 'save' });
       return;
     }
+    // Ctrl+P: Print
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('quick-print'));
+      return;
+    }
     // Ctrl+Plus/Minus: Zoom
     if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
       e.preventDefault();

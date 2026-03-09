@@ -7,6 +7,7 @@ const shortcuts = [
   { keys: 'Ctrl+Shift+Z', desc: 'やり直し (Redo)' },
   { keys: 'Ctrl+S', desc: '保存パネルを開く' },
   { keys: 'Ctrl+F', desc: 'テキスト検索' },
+  { keys: 'Ctrl+P', desc: '印刷' },
   { keys: 'Escape', desc: 'ツールモード解除 / パネル閉じる' },
   { keys: '1-8', desc: 'ツール切替 (表示/テキスト/描画/図形/マーカー/画像/ページ/保存)' },
   { keys: '\u2190 \u2192', desc: 'ページ移動' },

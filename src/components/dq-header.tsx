@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
@@ -36,6 +36,38 @@ export default function DqHeader() {
     },
     [dispatch, state.isModified],
   );
+
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    if (!state.pdfData || printing) return;
+    setPrinting(true);
+    try {
+      const blob = new Blob([state.pdfData], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+          setPrinting(false);
+        }, 1000);
+      };
+    } catch {
+      setPrinting(false);
+    }
+  }, [state.pdfData, printing]);
+
+  // Ctrl+P イベントリスナー
+  useEffect(() => {
+    const handler = () => { handlePrint(); };
+    window.addEventListener('quick-print', handler);
+    return () => window.removeEventListener('quick-print', handler);
+  }, [handlePrint]);
 
   const annotationCount = state.annotations.length;
 
@@ -90,9 +122,22 @@ export default function DqHeader() {
         </div>
       )}
 
-      {/* 右: 新規ファイル選択 */}
+      {/* 右: 印刷 + 新規ファイル選択 */}
       {hasPdf && (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handlePrint}
+            disabled={printing}
+            className="dq-window flex items-center justify-center w-9 h-9 min-h-[44px] min-w-[44px] rounded-lg cursor-pointer select-none active:scale-90 transition-transform"
+            aria-label="印刷"
+            title="印刷 (Ctrl+P)"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="dq-window flex items-center justify-center w-9 h-9 min-h-[44px] min-w-[44px] rounded-lg cursor-pointer select-none active:scale-90 transition-transform"
