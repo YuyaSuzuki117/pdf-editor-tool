@@ -89,6 +89,13 @@ body {
     radial-gradient(circle at 60% 80%, rgba(126,200,227,0.03) 0%, transparent 7%);
   color: var(--foreground);
   font-family: 'DotGothic16', 'Noto Sans JP', monospace;
+}
+
+/* ピクセルアートはDQテーマ要素のみに適用（PDFやユーザー画像には適用しない） */
+.dq-btn,
+.dq-btn-small,
+.dq-window,
+.ynk-pixel-border {
   image-rendering: pixelated;
 }
 
@@ -162,7 +169,6 @@ body {
   transition: all 0.08s;
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20' font-size='20'%3E%E2%9B%8F%3C/text%3E%3C/svg%3E") 12 12, pointer;
   min-height: 48px;
-  image-rendering: pixelated;
 }
 
 .dq-btn:active {
@@ -235,7 +241,6 @@ body {
   transition: all 0.08s;
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20' font-size='20'%3E%E2%9B%8F%3C/text%3E%3C/svg%3E") 12 12, pointer;
   min-height: 32px;
-  image-rendering: pixelated;
 }
 
 .dq-btn-small:active {
@@ -630,4 +635,37 @@ body {
 textarea:focus-visible {
   outline: 2px solid #fde047;
   outline-offset: 2px;
+}
+
+/* ===== prefers-reduced-motion: アニメーション無効化 ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .dq-bounce,
+  .ynk-sparkle,
+  .ynk-ore-glow,
+  .ynk-gold-pulse,
+  .ynk-active-sparkle {
+    animation: none !important;
+  }
+}
+
+/* ===== Firefox スクロールバー ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #5c3d2e #0d0804;
+}
+
+/* ===== 色コントラスト改善（WCAG AA準拠） ===== */
+/* --ynk-gold を明るくして小テキストでもコントラスト比4.5:1以上に */
+.dq-title {
+  color: #e8b820;
+}
+.dq-text {
+  color: #f0e4d0;
 }

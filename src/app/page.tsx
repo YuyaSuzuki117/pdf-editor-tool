@@ -116,6 +116,23 @@ function PDFApp() {
       if (s.pdfData) dispatch({ type: 'SET_TOOL', payload: 'save' });
       return;
     }
+    // Ctrl+Plus/Minus: Zoom
+    if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+      e.preventDefault();
+      dispatch({ type: 'SET_SCALE', payload: s.scale + 0.25 });
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+      e.preventDefault();
+      dispatch({ type: 'SET_SCALE', payload: s.scale - 0.25 });
+      return;
+    }
+    // Ctrl+0: Reset zoom
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+      e.preventDefault();
+      dispatch({ type: 'SET_SCALE', payload: 1 });
+      return;
+    }
 
     // 数字キーでツール切替 (1-8)
     if (!e.ctrlKey && !e.metaKey && !e.altKey && s.pdfData) {
@@ -130,8 +147,8 @@ function PDFApp() {
       }
     }
 
-    // 矢印キーでページ移動
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && s.toolMode === 'view' && s.pdfData) {
+    // 矢印キーでページ移動（どのモードでも使用可能）
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && s.pdfData && s.toolMode !== 'pages') {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
         if (s.currentPage > 1) dispatch({ type: 'SET_PAGE', payload: s.currentPage - 1 });
