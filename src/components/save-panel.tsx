@@ -243,6 +243,72 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             ctx.fillText(lines[i], x, y + i * scaledSize * scaleRatio * 1.2);
           }
           ctx.restore();
+        } else if (ann.type === 'shape') {
+          const style = ann.style as ShapeStyle;
+          let shapeData: { shapeType: string; x1: number; y1: number; x2: number; y2: number; filled?: boolean; fillColor?: string };
+          try { shapeData = JSON.parse(ann.content); } catch { continue; }
+          const scaleRatio = canvas.width / canvas.offsetWidth;
+          const sx1 = shapeData.x1 * scaleRatio;
+          const sy1 = shapeData.y1 * scaleRatio;
+          const sx2 = shapeData.x2 * scaleRatio;
+          const sy2 = shapeData.y2 * scaleRatio;
+          const sw = style.strokeWidth * scaleRatio;
+          ctx.save();
+          ctx.strokeStyle = style.strokeColor;
+          ctx.lineWidth = sw;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          const x = Math.min(sx1, sx2);
+          const y = Math.min(sy1, sy2);
+          const w = Math.abs(sx2 - sx1);
+          const h = Math.abs(sy2 - sy1);
+          switch (shapeData.shapeType) {
+            case 'rectangle':
+              if (shapeData.filled && shapeData.fillColor) {
+                ctx.fillStyle = shapeData.fillColor;
+                ctx.globalAlpha = 0.3;
+                ctx.fillRect(x, y, w, h);
+                ctx.globalAlpha = 1;
+              }
+              ctx.strokeRect(x, y, w, h);
+              break;
+            case 'circle': {
+              const cx = (sx1 + sx2) / 2;
+              const cy = (sy1 + sy2) / 2;
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+              if (shapeData.filled && shapeData.fillColor) {
+                ctx.fillStyle = shapeData.fillColor;
+                ctx.globalAlpha = 0.3;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+              }
+              ctx.stroke();
+              break;
+            }
+            case 'line':
+              ctx.beginPath();
+              ctx.moveTo(sx1, sy1);
+              ctx.lineTo(sx2, sy2);
+              ctx.stroke();
+              break;
+            case 'arrow': {
+              ctx.beginPath();
+              ctx.moveTo(sx1, sy1);
+              ctx.lineTo(sx2, sy2);
+              ctx.stroke();
+              const angle = Math.atan2(sy2 - sy1, sx2 - sx1);
+              const headLen = Math.max(12 * scaleRatio, sw * 4);
+              ctx.beginPath();
+              ctx.moveTo(sx2, sy2);
+              ctx.lineTo(sx2 - headLen * Math.cos(angle - Math.PI / 6), sy2 - headLen * Math.sin(angle - Math.PI / 6));
+              ctx.moveTo(sx2, sy2);
+              ctx.lineTo(sx2 - headLen * Math.cos(angle + Math.PI / 6), sy2 - headLen * Math.sin(angle + Math.PI / 6));
+              ctx.stroke();
+              break;
+            }
+          }
+          ctx.restore();
         } else if (ann.type === 'image') {
           const imgStyle = ann.style as Record<string, string | number>;
           const imgWidth = (imgStyle.width as number) || 150;

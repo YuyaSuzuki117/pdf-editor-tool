@@ -21,15 +21,15 @@ const strokeWidths = [1, 2, 4, 8];
 export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const settings = loadSettings();
-  const [strokeColor, setStrokeColor] = useState(settings.drawColor || '#000000');
-  const [strokeWidth, setStrokeWidth] = useState(settings.drawWidth || 2);
+  const [strokeColor, setStrokeColor] = useState(() => loadSettings().drawColor || '#000000');
+  const [strokeWidth, setStrokeWidth] = useState(() => loadSettings().drawWidth || 2);
   const [isEraser, setIsEraser] = useState(false);
-  const pathsRef = useRef<{ points: { x: number; y: number }[]; color: string; width: number }[]>([]);
+  const pathsRef = useRef<{ points: { x: number; y: number }[]; color: string; width: number; eraser?: boolean }[]>([]);
   const currentPath = useRef<{ x: number; y: number }[]>([]);
   const [strokeCount, setStrokeCount] = useState(0);
   const isDrawing = useRef(false);
   const drawRenderScale = useRef(1);
+  const dprRef = useRef(1);
 
   const updateStrokeCount = useCallback(() => {
     setStrokeCount(pathsRef.current.length);
@@ -56,11 +56,16 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
     if (!pdfCanvas) return;
     const rect = pdfCanvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    dprRef.current = dpr;
 
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    // DPR対応: CSSサイズとcanvas解像度を分離
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.scale(dpr, dpr);
     positionCanvas();
 
     // renderScaleをPDFcanvasのdata属性から取得
@@ -91,11 +96,20 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr = dprRef.current;
+    ctx.scale(dpr, dpr);
+    ctx.restore();
     for (const path of pathsRef.current) {
       if (path.points.length < 2) continue;
+      ctx.save();
+      if (path.eraser) {
+        ctx.globalCompositeOperation = 'destination-out';
+      }
       ctx.beginPath();
-      ctx.strokeStyle = path.color;
+      ctx.strokeStyle = path.eraser ? 'rgba(0,0,0,1)' : path.color;
       ctx.lineWidth = path.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -104,6 +118,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
         ctx.lineTo(path.points[i].x, path.points[i].y);
       }
       ctx.stroke();
+      ctx.restore();
     }
   }, []);
 
@@ -131,13 +146,20 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     if (!ctx) return;
     const points = currentPath.current;
     if (points.length < 2) return;
-    ctx.beginPath();
-    ctx.strokeStyle = isEraser ? '#f8f9fa' : strokeColor;
+    ctx.save();
+    if (isEraser) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.strokeStyle = strokeColor;
+    }
     ctx.lineWidth = isEraser ? strokeWidth * 3 : strokeWidth;
     ctx.lineCap = 'round';
+    ctx.beginPath();
     ctx.moveTo(points[points.length - 2].x, points[points.length - 2].y);
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
+    ctx.restore();
   };
 
   const endDraw = () => {
@@ -145,8 +167,9 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     isDrawing.current = false;
     pathsRef.current.push({
       points: [...currentPath.current],
-      color: isEraser ? '#f8f9fa' : strokeColor,
+      color: isEraser ? 'rgba(0,0,0,1)' : strokeColor,
       width: isEraser ? strokeWidth * 3 : strokeWidth,
+      eraser: isEraser,
     });
     currentPath.current = [];
     updateStrokeCount();
@@ -188,7 +211,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const handleConfirm = () => {
     for (const path of pathsRef.current) {
-      if (path.points.length < 2) continue;
+      if (path.points.length < 2 || path.eraser) continue; // 消しゴムストロークは保存しない
       const svgPath = path.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join('');
       const annotation: Annotation = {
         id: crypto.randomUUID(),
