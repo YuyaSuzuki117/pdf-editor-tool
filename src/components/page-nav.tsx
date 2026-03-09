@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 
 const PageNav = React.memo(function PageNav() {
   const { state, dispatch } = usePDF();
+  const pageAnnotationCount = useMemo(
+    () => state.annotations.filter(a => a.page === state.currentPage).length,
+    [state.annotations, state.currentPage]
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -91,12 +95,26 @@ const PageNav = React.memo(function PageNav() {
       ) : (
         <button
           onClick={startEdit}
-          className="dq-window rounded-lg px-2 py-0.5 cursor-pointer select-none active:scale-95 transition-transform min-h-[44px] flex items-center"
+          className="dq-window rounded-lg px-2 py-0.5 cursor-pointer select-none active:scale-95 transition-transform min-h-[44px] flex items-center gap-1"
           aria-label="ページ番号を入力"
         >
           <span className="dq-text text-sm whitespace-nowrap">
             {state.currentPage} / {state.numPages}
           </span>
+          {pageAnnotationCount > 0 && (
+            <span
+              className="inline-flex items-center justify-center text-[8px] min-w-[14px] h-[14px] px-0.5 rounded-full"
+              style={{
+                background: 'rgba(212,160,23,0.3)',
+                color: '#d4a017',
+                fontWeight: 700,
+                border: '1px solid rgba(212,160,23,0.5)',
+              }}
+              title={`このページに${pageAnnotationCount}件のアノテーション`}
+            >
+              {pageAnnotationCount}
+            </span>
+          )}
         </button>
       )}
 

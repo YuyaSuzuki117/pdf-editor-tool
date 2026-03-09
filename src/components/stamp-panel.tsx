@@ -155,6 +155,24 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     }
   }, [isOpen]);
 
+  // スタンプをPDFの中央に配置（タップ不要のワンクリック配置）
+  const handlePlaceCenter = useCallback(() => {
+    const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
+    if (!pdfCanvas) return;
+    const rect = pdfCanvas.getBoundingClientRect();
+    const container = document.querySelector('.pdf-canvas-container') as HTMLElement;
+    if (!container) return;
+    const scrollTop = container.scrollTop;
+    const visibleCenterX = rect.width / 2;
+    const visibleCenterY = (container.clientHeight / 2) + scrollTop - rect.top + container.getBoundingClientRect().top;
+    const size = stampSizes[stampSizeIdx];
+    const centerX = visibleCenterX - size.width / 2;
+    const centerY = Math.max(0, visibleCenterY - size.height / 2);
+    setTapPos({ x: centerX, y: centerY });
+    const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
+    if (scaleAttr) setTapRenderScale(parseFloat(scaleAttr));
+  }, [stampSizeIdx]);
+
   // --- スタンプ配置 ---
   const handlePlaceStamp = useCallback(() => {
     if (!tapPos) return;
@@ -509,19 +527,28 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
 
             {(selectedStamp || (useCustomStamp && customStampText.trim())) ? (
               !tapPos ? (
-                <div
-                  className="dq-message-box"
-                  style={{
-                    background: 'rgba(59,130,246,0.15)',
-                    border: '2px solid #3b82f6',
-                    borderRadius: 4,
-                    padding: '12px 16px',
-                    animation: 'dq-placement-blink 1.5s ease-in-out infinite',
-                  }}
-                >
-                  <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
-                    PDFをタップしてスタンプを配置
-                  </p>
+                <div className="space-y-2">
+                  <div
+                    className="dq-message-box"
+                    style={{
+                      background: 'rgba(59,130,246,0.15)',
+                      border: '2px solid #3b82f6',
+                      borderRadius: 4,
+                      padding: '12px 16px',
+                      animation: 'dq-placement-blink 1.5s ease-in-out infinite',
+                    }}
+                  >
+                    <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
+                      PDFをタップしてスタンプを配置
+                    </p>
+                  </div>
+                  <button
+                    onClick={handlePlaceCenter}
+                    className="dq-btn w-full text-sm"
+                    style={{ background: 'linear-gradient(180deg, #4a3a28 0%, #3b2a1a 100%)' }}
+                  >
+                    ページ中央に配置
+                  </button>
                 </div>
               ) : null
             ) : !useCustomStamp ? (
