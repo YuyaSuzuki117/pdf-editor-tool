@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Undo2 } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
-import { loadSettings, saveSettings } from '@/lib/user-settings';
+import { loadSettings, saveSettings, saveSignature, getSavedSignatures, removeSignature } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
 
@@ -647,6 +647,45 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
         {/* --- 署名タブ --- */}
         {tab === 'signature' && (
           <div className="space-y-3">
+            {/* 保存済み署名 */}
+            {(() => {
+              const saved = getSavedSignatures();
+              if (saved.length === 0) return null;
+              return (
+                <div>
+                  <p className="dq-text text-sm mb-1" style={{ color: 'var(--ynk-gold)' }}>保存済みの署名</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {saved.map((sig, i) => (
+                      <div key={i} className="relative shrink-0 group">
+                        <button
+                          onClick={() => {
+                            setSigDataURL(sig);
+                            setSigHasContent(true);
+                            showDqToast('保存済み署名を読み込みました', 'success');
+                          }}
+                          className="block"
+                          style={{
+                            border: sigDataURL === sig ? '3px solid #d4a017' : '2px solid #5c4a2e',
+                            borderRadius: 4,
+                            background: '#fff',
+                            padding: 4,
+                          }}
+                          aria-label={`保存済み署名${i + 1}を使う`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={sig} alt={`署名${i + 1}`} style={{ height: 40, width: 'auto' }} />
+                        </button>
+                        <button
+                          onClick={() => { removeSignature(i); showDqToast('署名を削除しました', 'info'); }}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity"
+                          aria-label={`署名${i + 1}を削除`}
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>署名を描いてください</p>
             <div
               style={{
@@ -704,22 +743,36 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
             </div>
 
             {sigHasContent ? (
-              !tapPos ? (
-                <div
-                  className="dq-message-box"
-                  style={{
-                    background: 'rgba(59,130,246,0.15)',
-                    border: '2px solid #3b82f6',
-                    borderRadius: 4,
-                    padding: '12px 16px',
-                    animation: 'dq-placement-blink 1.5s ease-in-out infinite',
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    if (sigDataURL) {
+                      saveSignature(sigDataURL);
+                      showDqToast('署名を保存しました！次回から再利用できます', 'success');
+                    }
                   }}
+                  className="dq-btn-small w-full flex items-center justify-center gap-1 min-h-[40px]"
+                  style={{ background: 'linear-gradient(180deg, #166534 0%, #14532d 100%)', borderColor: '#22c55e', color: '#86efac' }}
                 >
-                  <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
-                    PDFをタップして署名を配置
-                  </p>
-                </div>
-              ) : null
+                  💾 この署名を保存して再利用
+                </button>
+                {!tapPos ? (
+                  <div
+                    className="dq-message-box"
+                    style={{
+                      background: 'rgba(59,130,246,0.15)',
+                      border: '2px solid #3b82f6',
+                      borderRadius: 4,
+                      padding: '12px 16px',
+                      animation: 'dq-placement-blink 1.5s ease-in-out infinite',
+                    }}
+                  >
+                    <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
+                      PDFをタップして署名を配置
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '12px 16px' }}>
                 <p className="dq-text text-sm opacity-60">上のキャンバスに署名を描いてください</p>

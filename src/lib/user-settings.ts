@@ -22,6 +22,8 @@ export interface UserSettings {
   lastStampCustomText?: string;
   lastStampCustomColor?: string;
   lastStampWasCustom?: boolean;
+  recentColors?: string[];
+  savedSignatures?: string[]; // DataURL array
 }
 
 const defaults: UserSettings = {
@@ -57,4 +59,35 @@ export function saveSettings(partial: Partial<UserSettings>): void {
   } catch {
     // ignore
   }
+}
+
+/** 最近使った色を追加 (最大8色、重複除去) */
+export function addRecentColor(color: string): void {
+  const settings = loadSettings();
+  const recent = settings.recentColors || [];
+  const updated = [color, ...recent.filter(c => c !== color)].slice(0, 8);
+  saveSettings({ recentColors: updated });
+}
+
+/** 署名を保存 (最大5個) */
+export function saveSignature(dataURL: string): void {
+  const settings = loadSettings();
+  const sigs = settings.savedSignatures || [];
+  // 重複チェック（先頭100文字で比較）
+  if (sigs.some(s => s.slice(0, 100) === dataURL.slice(0, 100))) return;
+  const updated = [dataURL, ...sigs].slice(0, 5);
+  saveSettings({ savedSignatures: updated });
+}
+
+/** 保存済み署名を取得 */
+export function getSavedSignatures(): string[] {
+  return loadSettings().savedSignatures || [];
+}
+
+/** 署名を削除 */
+export function removeSignature(index: number): void {
+  const settings = loadSettings();
+  const sigs = [...(settings.savedSignatures || [])];
+  sigs.splice(index, 1);
+  saveSettings({ savedSignatures: sigs });
 }

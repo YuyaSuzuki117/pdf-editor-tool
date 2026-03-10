@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
-import { loadSettings, saveSettings } from '@/lib/user-settings';
+import { loadSettings, saveSettings, addRecentColor } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation, TextStyle } from '@/types/pdf';
 
@@ -108,6 +108,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
         },
       });
       showDqToast('テキストを更新しました！', 'success');
+      if (color !== '#000000') addRecentColor(color);
       setText('');
       setTapPos(null);
       setEditingId(null);
@@ -125,6 +126,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
       };
       dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
       showDqToast('テキストを追加しました！', 'success');
+      if (color !== '#000000') addRecentColor(color);
       // パネルを閉じず、テキストだけリセットして連続追加可能に
       setText('');
       setTapPos(null);
@@ -265,6 +267,25 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
         </div>
         <div>
           <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>文字の色</p>
+          {(() => {
+            const recent = loadSettings().recentColors || [];
+            const unique = recent.filter(c => !colors.some(cc => cc.value === c));
+            if (unique.length === 0) return null;
+            return (
+              <div className="flex gap-1.5 mb-2 flex-wrap">
+                <span className="dq-text text-[10px] self-center" style={{ color: 'var(--ynk-stone-light)' }}>最近:</span>
+                {unique.slice(0, 5).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setColor(c)}
+                    className={`dq-color-btn w-7 h-7 ${color === c ? 'active' : ''}`}
+                    style={{ backgroundColor: c, borderColor: color === c ? '#d4a017' : '#5c3d2e', borderWidth: 2, borderStyle: 'solid', borderRadius: 4 }}
+                    aria-label={`最近使った色 ${c}`}
+                  />
+                ))}
+              </div>
+            );
+          })()}
           <div className="flex gap-2 flex-wrap">
             {colors.map((c) => (
               <button

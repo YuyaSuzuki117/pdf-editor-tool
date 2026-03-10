@@ -12,6 +12,16 @@ const PageNav = React.memo(function PageNav() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [showGrid, setShowGrid] = useState(false);
+
+  // ページごとのアノテーション数
+  const pageAnnotations = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const a of state.annotations) {
+      map.set(a.page, (map.get(a.page) || 0) + 1);
+    }
+    return map;
+  }, [state.annotations]);
 
   const goTo = useCallback(
     (page: number) => {
@@ -128,6 +138,74 @@ const PageNav = React.memo(function PageNav() {
       >
         <span className="dq-title text-sm leading-none">&gt;</span>
       </button>
+
+      {/* ページグリッドボタン（3ページ以上で表示） */}
+      {state.numPages > 2 && (
+        <button
+          onClick={() => setShowGrid(!showGrid)}
+          className="dq-window flex items-center justify-center w-6 h-6 min-h-[32px] min-w-[32px] rounded-lg select-none active:scale-90 transition-all ml-0.5"
+          style={{ cursor: 'pointer', border: showGrid ? '2px solid #d4a017' : undefined }}
+          aria-label="ページ一覧"
+          title="ページ一覧"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="var(--ynk-gold)" strokeWidth="1.5">
+            <rect x="1" y="1" width="5" height="5" rx="0.5" />
+            <rect x="10" y="1" width="5" height="5" rx="0.5" />
+            <rect x="1" y="10" width="5" height="5" rx="0.5" />
+            <rect x="10" y="10" width="5" height="5" rx="0.5" />
+          </svg>
+        </button>
+      )}
+
+      {/* ページグリッドオーバーレイ */}
+      {showGrid && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center"
+          style={{ background: 'rgba(13,8,4,0.85)', backdropFilter: 'blur(2px)' }}
+          onClick={() => setShowGrid(false)}
+        >
+          <div
+            className="dq-window p-4 max-w-[400px] w-[90vw] max-h-[70vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="dq-title text-sm text-center mb-3">ページ一覧 ({state.numPages}ページ)</h3>
+            <div className="grid grid-cols-5 gap-2">
+              {Array.from({ length: state.numPages }, (_, i) => i + 1).map((p) => {
+                const annCount = pageAnnotations.get(p) || 0;
+                const isCurrent = p === state.currentPage;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => { goTo(p); setShowGrid(false); }}
+                    className="relative flex flex-col items-center justify-center min-h-[48px] transition-all active:scale-95"
+                    style={{
+                      background: isCurrent ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.3)',
+                      border: isCurrent ? '2px solid #d4a017' : '2px solid #5c4a2e',
+                      borderRadius: 4,
+                      boxShadow: isCurrent ? '0 0 8px rgba(212,160,23,0.4)' : 'none',
+                    }}
+                    aria-label={`ページ${p}に移動`}
+                  >
+                    <span className="dq-text text-sm" style={{ color: isCurrent ? '#d4a017' : 'var(--ynk-bone)' }}>{p}</span>
+                    {annCount > 0 && (
+                      <span className="absolute -top-1 -right-1 text-[8px] min-w-[14px] h-[14px] px-0.5 rounded-full flex items-center justify-center"
+                        style={{ background: '#d4a017', color: '#1a1008', fontWeight: 700 }}
+                      >{annCount}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowGrid(false)}
+              className="dq-btn-small w-full mt-3"
+              style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

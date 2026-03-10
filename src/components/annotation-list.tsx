@@ -310,7 +310,24 @@ export default function AnnotationList() {
           </div>
 
           {/* フッター */}
-          <div className="px-3 py-2 shrink-0" style={{ borderTop: '2px solid #5c4a2e' }}>
+          <div className="px-3 py-2 shrink-0 space-y-1.5" style={{ borderTop: '2px solid #5c4a2e' }}>
+            {filter !== 'all' && (
+              <button
+                onClick={async () => {
+                  const count = state.annotations.filter(a => a.type === filter).length;
+                  if (await dqConfirm(`${typeLabels[filter as AnnotationType]}を全て(${count}件)\n削除しますか？`)) {
+                    const toRemove = state.annotations.filter(a => a.type === filter).map(a => a.id);
+                    for (const id of toRemove) dispatch({ type: 'REMOVE_ANNOTATION', payload: id });
+                    showDqToast(`${typeLabels[filter as AnnotationType]}${count}件を削除しました`, 'success');
+                    setFilter('all');
+                  }
+                }}
+                className="dq-btn-small w-full flex items-center justify-center gap-1 text-xs py-1.5 min-h-[36px]"
+                style={{ background: 'linear-gradient(180deg, #92400e 0%, #78350f 100%)', borderColor: '#f59e0b', color: '#fde047' }}
+              >
+                <Trash2 size={14} /> {typeLabels[filter as AnnotationType]}を全て削除 ({state.annotations.filter(a => a.type === filter).length}件)
+              </button>
+            )}
             <button
               onClick={async () => {
                 if (await dqConfirm('全てのアノテーションを\n削除しますか？')) {
