@@ -99,6 +99,25 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   }, [isOpen, setupCanvas, positionCanvas]);
 
+  // ベジェ曲線でスムーズに描画するヘルパー
+  const drawSmoothPath = useCallback((ctx: CanvasRenderingContext2D, points: { x: number; y: number }[]) => {
+    if (points.length < 2) return;
+    ctx.moveTo(points[0].x, points[0].y);
+    if (points.length === 2) {
+      ctx.lineTo(points[1].x, points[1].y);
+      return;
+    }
+    // Quadratic bezier through midpoints for smooth curves
+    for (let i = 1; i < points.length - 1; i++) {
+      const midX = (points[i].x + points[i + 1].x) / 2;
+      const midY = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
+    }
+    // Draw to the last point
+    const last = points[points.length - 1];
+    ctx.lineTo(last.x, last.y);
+  }, []);
+
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -121,14 +140,11 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
       ctx.lineWidth = path.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.moveTo(path.points[0].x, path.points[0].y);
-      for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(path.points[i].x, path.points[i].y);
-      }
+      drawSmoothPath(ctx, path.points);
       ctx.stroke();
       ctx.restore();
     }
-  }, []);
+  }, [drawSmoothPath]);
 
   const getPosFromTouch = (e: React.TouchEvent) => {
     const canvas = canvasRef.current!;
@@ -163,9 +179,20 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
     ctx.lineWidth = isEraser ? strokeWidth * 3 : strokeWidth;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(points[points.length - 2].x, points[points.length - 2].y);
-    ctx.lineTo(pos.x, pos.y);
+    // Use quadratic curve for smooth real-time drawing (last 3 points)
+    if (points.length >= 3) {
+      const p0 = points[points.length - 3];
+      const p1 = points[points.length - 2];
+      const mid0 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+      const mid1 = { x: (p1.x + pos.x) / 2, y: (p1.y + pos.y) / 2 };
+      ctx.moveTo(mid0.x, mid0.y);
+      ctx.quadraticCurveTo(p1.x, p1.y, mid1.x, mid1.y);
+    } else {
+      ctx.moveTo(points[points.length - 2].x, points[points.length - 2].y);
+      ctx.lineTo(pos.x, pos.y);
+    }
     ctx.stroke();
     ctx.restore();
   };

@@ -80,6 +80,29 @@ const stampSizes: { label: string; fontSize: number; width: number; height: numb
 
 type TabMode = 'stamp' | 'signature' | 'image';
 
+// ページ範囲文字列をパース: "1-3, 5, 7-10" → [1,2,3,5,7,8,9,10]
+function parsePageRange(input: string, maxPage: number): number[] {
+  if (!input.trim()) {
+    // 空の場合は全ページ
+    return Array.from({ length: maxPage }, (_, i) => i + 1);
+  }
+  const pages = new Set<number>();
+  const parts = input.split(',');
+  for (const part of parts) {
+    const trimmed = part.trim();
+    const rangeMatch = trimmed.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (rangeMatch) {
+      const start = Math.max(1, parseInt(rangeMatch[1], 10));
+      const end = Math.min(maxPage, parseInt(rangeMatch[2], 10));
+      for (let i = start; i <= end; i++) pages.add(i);
+    } else {
+      const num = parseInt(trimmed, 10);
+      if (!isNaN(num) && num >= 1 && num <= maxPage) pages.add(num);
+    }
+  }
+  return Array.from(pages).sort((a, b) => a - b);
+}
+
 // --- スタンプをDataURL画像に変換 ---
 function stampToDataURL(stamp: StampDef, size: typeof stampSizes[number]): string {
   const canvas = document.createElement('canvas');
@@ -122,6 +145,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
   const [useCustomStamp, setUseCustomStamp] = useState(false);
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);
   const [tapRenderScale, setTapRenderScale] = useState(1);
+  const [pageRange, setPageRange] = useState('');
 
   // --- 署名 ---
   const sigCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -589,51 +613,64 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
                   </>
                 )}
                 {state.numPages > 1 && (
-                  <button
-                    onClick={() => {
-                      const size = stampSizes[stampSizeIdx];
-                      const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
-                      if (!pdfCanvas) return;
-                      const rect = pdfCanvas.getBoundingClientRect();
-                      const centerX = rect.width / 2 - size.width / 2;
-                      const centerY = rect.height / 2 - size.height / 2;
-                      const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
-                      const renderScale = scaleAttr ? parseFloat(scaleAttr) : 1;
-                      let dataURL: string;
-                      if (useCustomStamp && customStampText.trim()) {
-                        dataURL = customStampToDataURL(customStampText.trim(), customStampColor, size);
-                      } else if (selectedStamp) {
-                        dataURL = stampToDataURL(selectedStamp, size);
-                      } else return;
-                      for (let page = 1; page <= state.numPages; page++) {
-                        dispatch({
-                          type: 'ADD_ANNOTATION',
-                          payload: {
-                            id: crypto.randomUUID(),
-                            type: 'image',
-                            page,
-                            position: { x: centerX, y: centerY },
-                            content: dataURL,
-                            style: { width: size.width, height: size.height },
-                            renderScale,
-                            createdAt: Date.now() + page,
-                          },
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        const size = stampSizes[stampSizeIdx];
+                        const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
+                        if (!pdfCanvas) return;
+                        const rect = pdfCanvas.getBoundingClientRect();
+                        const centerX = rect.width / 2 - size.width / 2;
+                        const centerY = rect.height / 2 - size.height / 2;
+                        const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
+                        const renderScale = scaleAttr ? parseFloat(scaleAttr) : 1;
+                        let dataURL: string;
+                        if (useCustomStamp && customStampText.trim()) {
+                          dataURL = customStampToDataURL(customStampText.trim(), customStampColor, size);
+                        } else if (selectedStamp) {
+                          dataURL = stampToDataURL(selectedStamp, size);
+                        } else return;
+                        const pages = parsePageRange(pageRange, state.numPages);
+                        for (const page of pages) {
+                          dispatch({
+                            type: 'ADD_ANNOTATION',
+                            payload: {
+                              id: crypto.randomUUID(),
+                              type: 'image',
+                              page,
+                              position: { x: centerX, y: centerY },
+                              content: dataURL,
+                              style: { width: size.width, height: size.height },
+                              renderScale,
+                              createdAt: Date.now() + page,
+                            },
+                          });
+                        }
+                        showDqToast(`${pages.length}ページにスタンプを配置！`, 'success');
+                        saveSettings({
+                          lastStampLabel: useCustomStamp ? undefined : selectedStamp?.label,
+                          lastStampSizeIdx: stampSizeIdx,
+                          lastStampCustomText: useCustomStamp ? customStampText : undefined,
+                          lastStampCustomColor: useCustomStamp ? customStampColor : undefined,
+                          lastStampWasCustom: useCustomStamp,
                         });
-                      }
-                      showDqToast(`全${state.numPages}ページにスタンプを配置！`, 'success');
-                      saveSettings({
-                        lastStampLabel: useCustomStamp ? undefined : selectedStamp?.label,
-                        lastStampSizeIdx: stampSizeIdx,
-                        lastStampCustomText: useCustomStamp ? customStampText : undefined,
-                        lastStampCustomColor: useCustomStamp ? customStampColor : undefined,
-                        lastStampWasCustom: useCustomStamp,
-                      });
-                    }}
-                    className="dq-btn w-full text-sm flex items-center justify-center gap-2"
-                    style={{ background: 'linear-gradient(180deg, #166534 0%, #14532d 100%)', borderColor: '#22c55e' }}
-                  >
-                    全ページに配置 ({state.numPages}ページ)
-                  </button>
+                      }}
+                      className="dq-btn w-full text-sm flex items-center justify-center gap-2"
+                      style={{ background: 'linear-gradient(180deg, #166534 0%, #14532d 100%)', borderColor: '#22c55e' }}
+                    >
+                      {pageRange ? `指定ページに配置` : `全ページに配置`} ({parsePageRange(pageRange, state.numPages).length}ページ)
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="dq-text text-[10px] shrink-0" style={{ color: 'var(--ynk-gold)' }}>範囲:</span>
+                      <input
+                        value={pageRange}
+                        onChange={(e) => setPageRange(e.target.value)}
+                        placeholder="例: 1-3, 5, 7-10 (空=全て)"
+                        className="dq-input flex-1 text-xs py-1"
+                        aria-label="ページ範囲"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             ) : !useCustomStamp ? (

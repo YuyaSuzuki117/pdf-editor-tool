@@ -7,6 +7,7 @@ import { loadSettings, saveSettings, addRecentColor } from '@/lib/user-settings'
 import SlidePanel from './slide-panel';
 import type { Annotation, TextStyle } from '@/types/pdf';
 
+const noteColors = ['#fde047', '#86efac', '#93c5fd', '#fca5a5', '#fdba74'];
 const fontSizes = [10, 12, 14, 16, 18, 20, 24, 32, 48];
 const fontFamilies = [
   { label: 'Noto Sans JP', value: 'Noto Sans JP' },
@@ -35,6 +36,8 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
   const [tapPos, setTapPos] = useState<{ x: number; y: number } | null>(null);
   const [tapRenderScale, setTapRenderScale] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isNoteMode, setIsNoteMode] = useState(false);
+  const [noteColor, setNoteColor] = useState('#fde047');
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -90,6 +93,25 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tapPos]);
+
+  // 付箋メモとして追加
+  const handleAddNote = useCallback(() => {
+    if (!text.trim() || !tapPos) return;
+    const annotation: Annotation = {
+      id: crypto.randomUUID(),
+      type: 'note',
+      page: state.currentPage,
+      position: tapPos,
+      content: text,
+      style: { noteColor },
+      renderScale: tapRenderScale,
+      createdAt: Date.now(),
+    };
+    dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
+    showDqToast('メモを追加しました！', 'success');
+    setText('');
+    setTapPos(null);
+  }, [text, tapPos, noteColor, tapRenderScale, state.currentPage, dispatch]);
 
   const handleAdd = useCallback(() => {
     if (!text.trim() || !tapPos) return;
@@ -310,12 +332,43 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
             <p className="dq-text" style={{ fontSize: `${fontSize}px`, color, fontFamily, fontWeight: bold ? 'bold' : 'normal', fontStyle: italic ? 'italic' : 'normal' }}>{text}</p>
           </div>
         )}
+        {/* 付箋メモモード切替 */}
+        {!editingId && (
+          <div style={{ border: '1px solid rgba(92,74,46,0.3)', borderRadius: 4, padding: '10px 12px' }}>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isNoteMode}
+                onChange={(e) => setIsNoteMode(e.target.checked)}
+                style={{ accentColor: '#d4a017', width: 18, height: 18 }}
+              />
+              <span className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>付箋メモとして追加</span>
+            </label>
+            {isNoteMode && (
+              <div className="flex gap-2 mt-2">
+                {noteColors.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setNoteColor(c)}
+                    className="w-8 h-8 rounded"
+                    style={{
+                      backgroundColor: c,
+                      border: noteColor === c ? '3px solid #d4a017' : '2px solid #5c3d2e',
+                      boxShadow: noteColor === c ? '0 0 6px rgba(212,160,23,0.4)' : 'none',
+                    }}
+                    aria-label={`メモ色 ${c}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <button
-          onClick={handleAdd}
+          onClick={isNoteMode && !editingId ? handleAddNote : handleAdd}
           disabled={!text.trim() || !tapPos}
           className="dq-btn w-full"
         >
-          {editingId ? '更新する' : '追加する'}
+          {editingId ? '更新する' : isNoteMode ? 'メモを追加する' : '追加する'}
         </button>
         {editingId && (
           <button

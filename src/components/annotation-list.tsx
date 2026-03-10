@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image as ImageIcon, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image as ImageIcon, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus, Lock, Unlock } from 'lucide-react';
 import { showDqToast } from '@/lib/toast';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
@@ -213,8 +213,9 @@ export default function AnnotationList() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-gold)' }}>
+                    <span className="dq-text text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ynk-gold)' }}>
                       {typeLabels[ann.type]}
+                      {ann.locked && <Lock size={8} />}
                     </span>
                     <span className="dq-text text-[10px] opacity-50 flex items-center gap-0.5">
                       <MapPin size={8} />P.{ann.page}
@@ -289,15 +290,29 @@ export default function AnnotationList() {
                   </button>
                 )}
                 <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dispatch({ type: 'UPDATE_ANNOTATION', payload: { id: ann.id, updates: { locked: !ann.locked } } });
+                    showDqToast(ann.locked ? 'ロック解除しました' : 'ロックしました', 'info');
+                  }}
+                  className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                  style={{ color: ann.locked ? '#f59e0b' : '#6b7280', flexShrink: 0 }}
+                  title={ann.locked ? 'ロック解除' : 'ロック (移動・削除防止)'}
+                  aria-label={ann.locked ? `${typeLabels[ann.type]}のロック解除` : `${typeLabels[ann.type]}をロック`}
+                >
+                  {ann.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                </button>
+                <button
                   onClick={async (e) => {
                     e.stopPropagation();
+                    if (ann.locked) { showDqToast('ロック中は削除できません', 'error'); return; }
                     if (await dqConfirm(`この${typeLabels[ann.type]}を\n削除しますか？`)) {
                       dispatch({ type: 'REMOVE_ANNOTATION', payload: ann.id });
                     }
                   }}
                   className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
-                  style={{ color: '#ef4444', flexShrink: 0 }}
-                  title="削除"
+                  style={{ color: ann.locked ? '#6b728066' : '#ef4444', flexShrink: 0 }}
+                  title={ann.locked ? 'ロック中は削除不可' : '削除'}
                   aria-label={`${typeLabels[ann.type]}を削除`}
                 >
                   <Trash2 size={14} />

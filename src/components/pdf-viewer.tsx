@@ -33,6 +33,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
   const offsetRef = useRef({ x: 0, y: 0 });
 
   const startDrag = useCallback((clientX: number, clientY: number) => {
+    if (ann.locked) return; // ロックされたアノテーションは移動不可
     dragDistRef.current = 0;
     isDraggingRef.current = false;
     setDragState({
@@ -42,7 +43,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
       offsetX: 0,
       offsetY: 0,
     });
-  }, []);
+  }, [ann.locked]);
 
   useEffect(() => {
     if (!dragState.dragging) return;
@@ -145,7 +146,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           lineHeight: 1.2,
           whiteSpace: 'pre-wrap',
           textShadow: '0 0 2px rgba(255,255,255,0.5)',
-          cursor: 'grab',
+          cursor: ann.locked ? 'default' : 'grab',
           userSelect: 'none',
           transform: dragTransform,
           transition: dragState.dragging ? 'none' : 'transform 0.1s',
@@ -156,7 +157,10 @@ const AnnotationItem = React.memo(function AnnotationItem({
         onDoubleClick={handleDoubleClick}
       >
         {ann.content}
-        {(
+        {ann.locked && (
+          <span className="absolute -top-2 -left-3 text-[10px] opacity-60" title="ロック中">🔒</span>
+        )}
+        {!ann.locked && (
           <button
             onClick={(e) => {
               e.stopPropagation();

@@ -57,6 +57,7 @@ export interface Annotation {
   style: TextStyle | DrawStyle | HighlightStyle | ShapeStyle | NoteStyle | Record<string, string | number | boolean | undefined>;
   renderScale?: number;
   createdAt: number;
+  locked?: boolean;
 }
 
 export interface PDFState {

@@ -80,6 +80,54 @@ function PDFApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.file?.name]);
 
+  // Ctrl+V: クリップボードから画像を貼り付け
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (!stateRef.current.pdfData) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const dataURL = ev.target?.result as string;
+            if (!dataURL) return;
+            const img = new window.Image();
+            img.onload = () => {
+              const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
+              if (!pdfCanvas) return;
+              const rect = pdfCanvas.getBoundingClientRect();
+              const imgWidth = Math.min(200, img.width);
+              const aspectRatio = img.height / img.width;
+              const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
+              const renderScale = scaleAttr ? parseFloat(scaleAttr) : 1;
+              const annotation = {
+                id: crypto.randomUUID(),
+                type: 'image' as const,
+                page: stateRef.current.currentPage,
+                position: { x: rect.width / 2 - imgWidth / 2, y: rect.height / 3 },
+                content: dataURL,
+                style: { width: imgWidth, height: Math.round(imgWidth * aspectRatio) },
+                renderScale,
+                createdAt: Date.now(),
+              };
+              dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
+              showDqToast('クリップボードから画像を貼り付けました！', 'success');
+            };
+            img.src = dataURL;
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [dispatch]);
+
   // キーボードショートカット
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const s = stateRef.current;

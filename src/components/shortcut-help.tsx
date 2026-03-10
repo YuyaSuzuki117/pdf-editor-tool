@@ -18,6 +18,7 @@ const shortcuts = [
   { keys: 'テキストをダブルクリック', desc: 'テキスト再編集' },
   { keys: 'ダブルタップ (表示モード)', desc: 'ズームリセット' },
   { keys: 'R', desc: '現在ページを90°回転' },
+  { keys: 'Ctrl+V', desc: 'クリップボード画像を貼り付け' },
   { keys: 'PDFをドロップ', desc: '結合 (PDF表示中)' },
   { keys: '?', desc: 'このヘルプを表示' },
 ];
