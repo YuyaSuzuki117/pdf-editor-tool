@@ -87,27 +87,6 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     generateThumbnails();
   };
 
-  const handleInsertPDF = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file || !state.pdfData) return;
-      const newBuffer = await file.arrayBuffer();
-      const merged = await mergePdfs([state.pdfData, newBuffer]);
-      const doc = await loadDocumentFromBytes(merged.buffer as ArrayBuffer);
-      const numPages = doc.numPages;
-      doc.destroy(); // ページ数取得後に即解放
-      dispatch({
-        type: 'UPDATE_PDF_DATA',
-        payload: { pdfData: merged.buffer as ArrayBuffer, numPages },
-      });
-      generateThumbnails();
-    };
-    input.click();
-  };
-
   const handleMove = async (pageIndex: number, direction: 'up' | 'down') => {
     if (!state.pdfData) return;
     const total = state.numPages;
@@ -225,7 +204,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
         <h2 className="dq-title text-lg">ページ管理</h2>
         <div className="flex items-center gap-2">
           <span className="text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>{state.numPages}p</span>
-          <button onClick={onClose} className="dq-close-btn" style={{ background: 'linear-gradient(180deg, #4a4a4a 0%, #333 100%)', border: '2px solid #7a5540', borderRadius: '50%', color: '#d4a017', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+          <button onClick={onClose} className="dq-close-btn" style={{ background: 'linear-gradient(180deg, #4a4a4a 0%, #333 100%)', border: '2px solid #7a5540', borderRadius: '50%', color: '#d4a017', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }} aria-label="ページ管理を閉じる">
             <X size={20} />
           </button>
         </div>
@@ -269,7 +248,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                 <div key={i} className="flex items-center gap-2 px-3 py-2" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4 }}>
                   <FileText size={16} style={{ color: 'var(--ynk-bone)' }} />
                   <span className="dq-text text-sm flex-1">{f.name} ({f.pages}p)</span>
-                  <button onClick={() => setMergeFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ color: '#ef4444' }}><X size={16} /></button>
+                  <button onClick={() => setMergeFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ color: '#ef4444' }} aria-label={`${f.name}を削除`}><X size={16} /></button>
                 </div>
               ))}
               <button onClick={handleMerge} className="dq-btn w-full flex items-center justify-center gap-2">
@@ -292,6 +271,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
             onChange={(e) => setSplitRange(e.target.value)}
             placeholder="ページ番号 (例: 1-3, 5, 7-10)"
             className="dq-input w-full"
+            aria-label="分割するページ番号"
           />
           <p className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
             総ページ数: {state.numPages}
@@ -355,6 +335,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                       onClick={(e) => { e.stopPropagation(); handleRotate(thumb.index); }}
                       className="dq-btn-small flex items-center justify-center"
                       title="回転"
+                      aria-label={`ページ${thumb.index + 1}を回転`}
                       style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                     >
                       <RotateCw size={13} />
@@ -364,6 +345,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleDelete(thumb.index); }}
                         className="dq-btn-danger flex items-center justify-center"
                         title="削除"
+                        aria-label={`ページ${thumb.index + 1}を削除`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                       >
                         <Trash2 size={13} />
@@ -378,6 +360,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleMove(thumb.index, 'up'); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="前へ移動"
+                        aria-label={`ページ${thumb.index + 1}を前へ移動`}
                         disabled={isFirst}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isFirst ? 0.3 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
                       >
@@ -387,6 +370,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleMove(thumb.index, 'down'); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="後へ移動"
+                        aria-label={`ページ${thumb.index + 1}を後へ移動`}
                         disabled={isLast}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isLast ? 0.3 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
                       >
@@ -396,6 +380,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleDuplicate(thumb.index); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="複製"
+                        aria-label={`ページ${thumb.index + 1}を複製`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                       >
                         <Copy size={13} />
@@ -404,6 +389,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleInsertBlank(thumb.index); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="空白ページ挿入"
+                        aria-label={`ページ${thumb.index + 1}の後に空白ページ挿入`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
                       >
                         <FilePlus size={13} />

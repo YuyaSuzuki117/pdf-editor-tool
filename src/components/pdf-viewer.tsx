@@ -11,14 +11,12 @@ import type { Annotation, TextStyle, DrawStyle, HighlightStyle, ShapeStyle, Note
 const AnnotationItem = React.memo(function AnnotationItem({
   ann,
   fitScale,
-  toolMode,
   parsedPoints,
   onDelete,
   onUpdate,
 }: {
   ann: Annotation;
   fitScale: number;
-  toolMode: string;
   parsedPoints?: { x: number; y: number }[];
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Annotation>) => void;
@@ -531,7 +529,7 @@ export default function PDFViewer() {
   useEffect(() => {
     if (!state.pdfData) return;
     let cancelled = false;
-    setDocReady(false);
+    setDocReady(false); // eslint-disable-line react-hooks/set-state-in-effect -- async load requires resetting ready state
     (async () => {
       try {
         // 前のドキュメントを破棄
@@ -555,13 +553,13 @@ export default function PDFViewer() {
 
   // unmount時にPDFドキュメントとcanvasを解放
   useEffect(() => {
+    const canvas = canvasRef.current;
     return () => {
       if (docRef.current) {
         docRef.current.destroy();
         docRef.current = null;
       }
       // canvasのメモリ解放
-      const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -581,7 +579,7 @@ export default function PDFViewer() {
     // ページが変わった場合はフェードアウト開始
     const pageChanged = prevPageRef.current !== state.currentPage;
     if (pageChanged) {
-      setPageOpacity(0);
+      setPageOpacity(0); // eslint-disable-line react-hooks/set-state-in-effect -- fade animation trigger
       prevPageRef.current = state.currentPage;
     }
 
@@ -724,7 +722,9 @@ export default function PDFViewer() {
 
   // Ctrl+Wheel ズーム（useRefで最新scaleを参照してstale closure回避）
   const scaleRef = useRef(state.scale);
-  scaleRef.current = state.scale;
+  useEffect(() => {
+    scaleRef.current = state.scale;
+  }, [state.scale]);
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -741,7 +741,7 @@ export default function PDFViewer() {
   // テキストモード以外のときカーソルをリセット
   useEffect(() => {
     if (state.toolMode !== 'text') {
-      setTextCursor(null);
+      setTextCursor(null); // eslint-disable-line react-hooks/set-state-in-effect -- reset cursor when leaving text mode
     }
   }, [state.toolMode]);
 
@@ -806,7 +806,6 @@ export default function PDFViewer() {
                 key={ann.id}
                 ann={ann}
                 fitScale={fitScale}
-                toolMode={state.toolMode}
                 parsedPoints={parsedPaths.get(ann.id)}
                 onDelete={handleDeleteAnnotation}
                 onUpdate={handleUpdateAnnotation}

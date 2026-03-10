@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import { loadSettings, saveSettings } from '@/lib/user-settings';
@@ -74,11 +74,13 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
   }, [fontSize, color, fontFamily]);
 
   // パネルを閉じたらリセット
+  const prevIsOpenRef = useRef(isOpen);
   useEffect(() => {
-    if (!isOpen) {
-      setTapPos(null);
+    if (!isOpen && prevIsOpenRef.current) {
+      setTapPos(null); // eslint-disable-line react-hooks/set-state-in-effect -- reset state on panel close
       setEditingId(null);
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen]);
 
   const handleAdd = useCallback(() => {
@@ -119,7 +121,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
       setText('');
       setTapPos(null);
     }
-  }, [text, tapPos, fontSize, fontFamily, color, tapRenderScale, state.currentPage, dispatch, editingId]);
+  }, [text, tapPos, fontSize, fontFamily, color, bold, italic, tapRenderScale, state.currentPage, dispatch, editingId]);
 
   const handleCancel = useCallback(() => {
     if (editingId) {
@@ -175,6 +177,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
           placeholder="テキストを入力..."
           className="dq-input w-full resize-none min-h-[80px]"
           autoFocus
+          aria-label="追加するテキスト"
         />
         <div>
           <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>文字サイズ</p>
@@ -233,6 +236,8 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
                 ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
                 : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
               }
+              aria-pressed={bold}
+              aria-label="太字"
             >
               <span style={{ fontWeight: 'bold', fontSize: 16 }}>B</span>
             </button>
@@ -243,6 +248,8 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
                 ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
                 : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
               }
+              aria-pressed={italic}
+              aria-label="斜体"
             >
               <span style={{ fontStyle: 'italic', fontSize: 16 }}>I</span>
             </button>

@@ -36,6 +36,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
   const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [overlayBounds, setOverlayBounds] = useState<{ left: number; top: number; width: number; height: number }>({ left: 0, top: 0, width: 0, height: 0 });
   const startPos = useRef<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const highlightRenderScale = useRef(1);
 
@@ -77,7 +78,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
-  const startSelection = (pos: { x: number; y: number }) => { startPos.current = pos; setRect(null); };
+  const startSelection = (pos: { x: number; y: number }) => { startPos.current = pos; setRect(null); setIsDragging(true); };
   const moveSelection = (pos: { x: number; y: number }) => {
     if (!startPos.current) return;
     const x = Math.min(startPos.current.x, pos.x);
@@ -86,7 +87,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
     const h = Math.abs(pos.y - startPos.current.y);
     setRect({ x, y, w, h });
   };
-  const endSelection = () => { startPos.current = null; };
+  const endSelection = () => { startPos.current = null; setIsDragging(false); };
 
   const handleTouchStart = (e: React.TouchEvent) => { e.preventDefault(); startSelection(getPosFromTouch(e)); };
   const handleTouchMove = (e: React.TouchEvent) => { e.preventDefault(); moveSelection(getPosFromTouch(e)); };
@@ -172,7 +173,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
                   pointerEvents: 'none',
                 }}
               />
-              {startPos.current && (
+              {isDragging && (
                 <div
                   className="absolute pointer-events-none"
                   style={{
@@ -224,6 +225,7 @@ export default function HighlightPanel({ isOpen, onClose }: { isOpen: boolean; o
                     className={`dq-color-btn w-12 h-12 ${color === c.value ? 'active' : ''}`}
                     style={{ backgroundColor: c.value, borderColor: color === c.value ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
                     title={c.label}
+                    aria-label={c.label}
                   />
                 ))}
                 <label className="w-12 h-12 rounded cursor-pointer overflow-hidden" style={{ border: '3px solid #5c3d2e' }}>

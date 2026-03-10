@@ -20,16 +20,20 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
   const dragStartY = useRef(0);
   const currentY = useRef(0);
 
+  // isOpen変化を前回値と比較して処理
+  const prevOpenRef = useRef(isOpen);
   useEffect(() => {
-    if (isOpen) {
-      setVisible(true);
+    if (isOpen && !prevOpenRef.current) {
+      setVisible(true); // eslint-disable-line react-hooks/set-state-in-effect -- slide animation requires visibility toggle
       setPanelSize(allowInteraction ? 'compact' : 'expanded');
       requestAnimationFrame(() => setTranslateY(0));
-    } else {
+    } else if (!isOpen && prevOpenRef.current) {
       setTranslateY(100);
       const timer = setTimeout(() => setVisible(false), 300);
+      prevOpenRef.current = isOpen;
       return () => clearTimeout(timer);
     }
+    prevOpenRef.current = isOpen;
   }, [isOpen, allowInteraction]);
 
   // Escapeキーで閉じる

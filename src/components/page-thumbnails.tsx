@@ -17,14 +17,7 @@ const PageThumbnails = React.memo(function PageThumbnails() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pdfDataRef = useRef<ArrayBuffer | null>(null);
 
-  // モバイルではデフォルト閉じ
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 640);
-    const handler = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
+  // (モバイル判定は将来用に保持、現在未使用)
 
   // PDFデータが変わったらサムネイル生成
   useEffect(() => {

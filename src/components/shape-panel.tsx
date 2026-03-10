@@ -223,6 +223,8 @@ export default function ShapePanel({ isOpen, onClose }: { isOpen: boolean; onClo
           ref={canvasRef}
           className="fixed z-[45] touch-none"
           style={{ cursor: 'crosshair' }}
+          role="img"
+          aria-label="図形描画キャンバス"
           onTouchStart={handleStart}
           onTouchMove={handleMove}
           onTouchEnd={handleEnd}
@@ -251,6 +253,7 @@ export default function ShapePanel({ isOpen, onClose }: { isOpen: boolean; onClo
                     ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
                     : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
                   }
+                  aria-pressed={shapeType === s.type}
                 >
                   <span style={{ fontSize: 18 }}>{s.icon}</span>
                   <span style={{ fontSize: 10 }}>{s.label}</span>
@@ -269,6 +272,7 @@ export default function ShapePanel({ isOpen, onClose }: { isOpen: boolean; onClo
                   onClick={() => setStrokeColor(c)}
                   className={`dq-color-btn w-10 h-10 ${strokeColor === c ? 'active' : ''}`}
                   style={{ backgroundColor: c, borderColor: strokeColor === c ? '#d4a017' : '#5c3d2e', borderWidth: 3, borderStyle: 'solid', borderRadius: 4 }}
+                  aria-label={c}
                 />
               ))}
               <label className="w-10 h-10 rounded cursor-pointer overflow-hidden" style={{ border: '3px solid #5c3d2e' }}>

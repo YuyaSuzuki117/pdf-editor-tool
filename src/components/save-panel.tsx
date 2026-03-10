@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { FileDown, Image, ChevronDown, ChevronUp, FileJson, Upload } from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { FileDown, Image as ImageIcon, ChevronDown, ChevronUp, FileJson, Upload } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import {
@@ -13,7 +13,6 @@ import {
 } from '@/lib/pdf-editor';
 import type { BatchAnnotation } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
-import { DqSlime } from '@/components/dq-slime';
 import { YuunamaMushroomMan } from '@/components/dq-characters';
 import type { TextStyle, DrawStyle, HighlightStyle, ShapeStyle, Annotation } from '@/types/pdf';
 
@@ -382,14 +381,14 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     input.click();
   }, [dispatch]);
 
-  const annotationSummary = (() => {
+  const annotationSummary = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const ann of state.annotations) {
       const label = ann.type === 'text' ? 'テキスト' : ann.type === 'draw' ? '描画' : ann.type === 'highlight' ? 'マーカー' : ann.type === 'shape' ? '図形' : ann.type === 'note' ? '付箋' : '画像';
       counts[label] = (counts[label] || 0) + 1;
     }
     return Object.entries(counts).map(([label, count]) => `${label}${count}件`).join('、');
-  })();
+  }, [state.annotations]);
 
   return (
     <SlidePanel isOpen={isOpen} onClose={onClose} title="保存・書き出し">
@@ -422,8 +421,8 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
         )}
 
         <div>
-          <label className="dq-text text-sm block mb-1" style={{ color: 'var(--ynk-gold)' }}>ファイル名</label>
-          <input value={filename} onChange={(e) => setFilename(e.target.value)} placeholder={state.file?.name?.replace('.pdf', '') || 'document'} className="dq-input w-full" />
+          <label htmlFor="save-filename" className="dq-text text-sm block mb-1" style={{ color: 'var(--ynk-gold)' }}>ファイル名</label>
+          <input id="save-filename" value={filename} onChange={(e) => setFilename(e.target.value)} placeholder={state.file?.name?.replace('.pdf', '') || 'document'} className="dq-input w-full" />
         </div>
 
         {/* ウォーターマーク */}
@@ -431,6 +430,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           onClick={() => setShowWatermark(!showWatermark)}
           className="w-full flex items-center justify-between px-3 py-2"
           style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+          aria-expanded={showWatermark}
         >
           <span className="dq-text text-sm">ウォーターマーク</span>
           {showWatermark ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -462,6 +462,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           onClick={() => setShowMeta(!showMeta)}
           className="w-full flex items-center justify-between px-3 py-2"
           style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+          aria-expanded={showMeta}
         >
           <span className="dq-text text-sm">メタデータ</span>
           {showMeta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -507,7 +508,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           className="dq-btn w-full flex items-center justify-center gap-2"
           style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
         >
-          <Image size={20} />
+          <ImageIcon size={20} />
           画像として保存（現在のページ）
         </button>
         {state.annotations.length > 0 && (

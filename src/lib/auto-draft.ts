@@ -19,9 +19,17 @@ export function saveDraft(fileName: string, annotations: Annotation[]): void {
   }
   try {
     const draft: DraftData = { fileName, annotations, savedAt: Date.now() };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    const json = JSON.stringify(draft);
+    // 5MB超のデータはlocalStorageに保存しない（クォータ超過防止）
+    if (json.length > 5 * 1024 * 1024) return;
+    localStorage.setItem(DRAFT_KEY, json);
   } catch {
-    // localStorage full or unavailable
+    // localStorage full or unavailable — 古いドラフトを削除してリトライ
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
   }
 }
 

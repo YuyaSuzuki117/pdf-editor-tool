@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image as ImageIcon, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus } from 'lucide-react';
 import { showDqToast } from '@/lib/toast';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
@@ -11,7 +11,7 @@ const typeIcons: Record<AnnotationType, React.ReactNode> = {
   text: <Type size={14} />,
   draw: <Pencil size={14} />,
   highlight: <Highlighter size={14} />,
-  image: <Image size={14} />,
+  image: <ImageIcon size={14} />,
   shape: <Diamond size={14} />,
   note: <StickyNote size={14} />,
 };
@@ -119,7 +119,7 @@ export default function AnnotationList() {
       </button>
 
       {isOpen && (
-        <div role="dialog" aria-label="アノテーション一覧" className="fixed top-28 right-3 z-50 w-80 max-h-[65vh] flex flex-col"
+        <div role="dialog" aria-label="アノテーション一覧" className="fixed top-28 right-3 left-3 sm:left-auto z-50 sm:w-80 max-h-[65vh] flex flex-col"
           style={{
             background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',
             border: '3px solid #5c4a2e',
@@ -195,6 +195,8 @@ export default function AnnotationList() {
             {filtered.map((ann) => (
               <div
                 key={ann.id}
+                role="button"
+                tabIndex={0}
                 className="flex items-center gap-2 px-2 py-1.5 group cursor-pointer"
                 style={{
                   background: ann.page === state.currentPage ? 'rgba(212,160,23,0.1)' : 'rgba(0,0,0,0.2)',
@@ -202,7 +204,9 @@ export default function AnnotationList() {
                   borderRadius: 2,
                 }}
                 onClick={() => jumpToAnnotation(ann.page)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToAnnotation(ann.page); } }}
                 title={`ページ${ann.page}に移動`}
+                aria-label={`${typeLabels[ann.type]} ページ${ann.page}に移動`}
               >
                 <span style={{ color: 'var(--ynk-gold)', flexShrink: 0 }}>
                   {typeIcons[ann.type]}
@@ -285,9 +289,11 @@ export default function AnnotationList() {
                   </button>
                 )}
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    dispatch({ type: 'REMOVE_ANNOTATION', payload: ann.id });
+                    if (await dqConfirm(`この${typeLabels[ann.type]}を\n削除しますか？`)) {
+                      dispatch({ type: 'REMOVE_ANNOTATION', payload: ann.id });
+                    }
                   }}
                   className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
                   style={{ color: '#ef4444', flexShrink: 0 }}

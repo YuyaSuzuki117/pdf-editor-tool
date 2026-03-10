@@ -576,6 +576,8 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
                 ref={sigCanvasRef}
                 width={300}
                 height={120}
+                role="img"
+                aria-label="署名描画キャンバス"
                 style={{ width: '100%', height: 120, cursor: 'crosshair', display: 'block' }}
                 onMouseDown={sigStart}
                 onMouseMove={sigMove}

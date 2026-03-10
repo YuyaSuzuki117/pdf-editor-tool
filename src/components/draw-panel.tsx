@@ -79,14 +79,20 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
     if (isOpen) {
       setTimeout(setupCanvas, 100);
       pathsRef.current = [];
-      setStrokeCount(0);
+      // strokeCountリセットはsetTimeout内で行う（effectの同期setState回避）
+      setTimeout(() => setStrokeCount(0), 0);
 
-      // スクロール時に描画canvasの位置を追従させる
+      // スクロール時に描画canvasの位置を追従させる（RAF debounce）
       const container = document.querySelector('.pdf-canvas-container');
-      const handleScroll = () => positionCanvas();
+      let rafId = 0;
+      const handleScroll = () => {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(positionCanvas);
+      };
       container?.addEventListener('scroll', handleScroll);
       window.addEventListener('resize', handleScroll);
       return () => {
+        cancelAnimationFrame(rafId);
         container?.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', handleScroll);
       };
@@ -280,6 +286,7 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
               onClick={() => setIsEraser(false)}
               className={`dq-btn-small flex items-center gap-2 px-4 py-2 min-h-[44px] ${!isEraser ? '' : ''}`}
               style={!isEraser ? {} : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
+              aria-pressed={!isEraser}
             >
               <Pencil size={18} /> ペン
             </button>
@@ -287,13 +294,14 @@ export default function DrawPanel({ isOpen, onClose }: { isOpen: boolean; onClos
               onClick={() => setIsEraser(true)}
               className={`dq-btn-small flex items-center gap-2 px-4 py-2 min-h-[44px]`}
               style={isEraser ? {} : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
+              aria-pressed={isEraser}
             >
               <Eraser size={18} /> 消しゴム
             </button>
-            <button onClick={handleUndo} className="dq-btn-small flex items-center justify-center min-h-[44px] min-w-[44px]" style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}>
+            <button onClick={handleUndo} className="dq-btn-small flex items-center justify-center min-h-[44px] min-w-[44px]" style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }} aria-label="描画を元に戻す">
               <Undo2 size={18} />
             </button>
-            <button onClick={handleClear} className="dq-btn-danger flex items-center justify-center min-h-[44px] min-w-[44px]">
+            <button onClick={handleClear} className="dq-btn-danger flex items-center justify-center min-h-[44px] min-w-[44px]" aria-label="描画を全てクリア">
               <Trash2 size={18} />
             </button>
           </div>

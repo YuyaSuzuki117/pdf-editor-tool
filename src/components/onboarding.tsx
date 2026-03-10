@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DqSlime } from './dq-slime';
 import { YuunamaHero, YuunamaLilith, YuunamaGoblin, YuunamaMushroomMan, YuunamaSlime, YuunamaSkeleton } from './dq-characters';
 
@@ -25,20 +25,15 @@ const steps = [
 ];
 
 export default function Onboarding() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(() => {
+    try {
+      return !localStorage.getItem(STORAGE_KEY);
+    } catch {
+      return false;
+    }
+  });
   const [step, setStep] = useState(0);
   const [exiting, setExiting] = useState(false);
-
-  useEffect(() => {
-    try {
-      const done = localStorage.getItem(STORAGE_KEY);
-      if (!done) {
-        setVisible(true);
-      }
-    } catch {
-      // localStorage unavailable
-    }
-  }, []);
 
   const finish = () => {
     setExiting(true);

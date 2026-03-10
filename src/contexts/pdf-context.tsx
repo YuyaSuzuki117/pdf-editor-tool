@@ -94,9 +94,11 @@ function combinedReducer(state: ReducerState, action: PDFAction): ReducerState {
       if (!target) return state;
       // 変更前の値を保存（undo用）
       const before: Partial<Annotation> = {};
-      for (const key of Object.keys(action.payload.updates) as (keyof Annotation)[]) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (before as any)[key] = (target as any)[key];
+      for (const key of Object.keys(action.payload.updates)) {
+        const k = key as keyof Annotation;
+        if (k in target) {
+          Object.assign(before, { [k]: target[k] });
+        }
       }
       return {
         pdfState: {
