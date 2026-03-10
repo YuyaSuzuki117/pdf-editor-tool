@@ -7,7 +7,7 @@ import { loadSettings, saveSettings } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation, TextStyle } from '@/types/pdf';
 
-const fontSizes = [10, 12, 16, 20, 24, 32, 48];
+const fontSizes = [10, 12, 14, 16, 18, 20, 24, 32, 48];
 const fontFamilies = [
   { label: 'Noto Sans JP', value: 'Noto Sans JP' },
   { label: 'Helvetica', value: 'Helvetica' },
@@ -77,11 +77,19 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
   const prevIsOpenRef = useRef(isOpen);
   useEffect(() => {
     if (!isOpen && prevIsOpenRef.current) {
-      setTapPos(null); // eslint-disable-line react-hooks/set-state-in-effect -- reset state on panel close
+      setTapPos(null);
       setEditingId(null);
     }
     prevIsOpenRef.current = isOpen;
   }, [isOpen]);
+
+  // テキスト入力済み＋PDFタップで即配置（入力→タップの自然なフロー）
+  useEffect(() => {
+    if (tapPos && text.trim() && !editingId) {
+      handleAdd();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapPos]);
 
   const handleAdd = useCallback(() => {
     if (!text.trim() || !tapPos) return;
@@ -154,15 +162,15 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
           <div
             className="dq-message-box"
             style={{
-              background: 'rgba(59,130,246,0.15)',
-              border: '2px solid #3b82f6',
+              background: text.trim() ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)',
+              border: `2px solid ${text.trim() ? '#22c55e' : '#3b82f6'}`,
               borderRadius: 4,
               padding: '12px 16px',
               animation: 'dq-placement-blink 1.5s ease-in-out infinite',
             }}
           >
-            <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
-              PDFをタップして配置場所を選んでください
+            <p className="dq-text text-sm font-bold" style={{ color: text.trim() ? '#86efac' : '#93c5fd' }}>
+              {text.trim() ? 'PDFをタップで即配置！' : 'テキストを入力 → PDFをタップで配置'}
             </p>
           </div>
         )}
@@ -181,7 +189,7 @@ export default function TextEditorPanel({ isOpen, onClose }: { isOpen: boolean; 
         />
         <div>
           <p className="dq-text text-sm mb-2" style={{ color: 'var(--ynk-gold)' }}>文字サイズ</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {fontSizes.map((s) => (
               <button
                 key={s}

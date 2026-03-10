@@ -17,6 +17,11 @@ export interface UserSettings {
   shapeStrokeWidth?: number;
   shapeFilled?: boolean;
   highlightMode?: string;
+  lastStampLabel?: string;
+  lastStampSizeIdx?: number;
+  lastStampCustomText?: string;
+  lastStampCustomColor?: string;
+  lastStampWasCustom?: boolean;
 }
 
 const defaults: UserSettings = {

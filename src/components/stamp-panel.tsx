@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Undo2 } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
+import { loadSettings, saveSettings } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
 import type { Annotation } from '@/types/pdf';
 
@@ -200,6 +201,14 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     dispatch({ type: 'ADD_ANNOTATION', payload: annotation });
     showDqToast('スタンプを配置しました！', 'success');
     setTapPos(null);
+    // Save last-used stamp config
+    saveSettings({
+      lastStampLabel: useCustomStamp ? undefined : selectedStamp?.label,
+      lastStampSizeIdx: stampSizeIdx,
+      lastStampCustomText: useCustomStamp ? customStampText : undefined,
+      lastStampCustomColor: useCustomStamp ? customStampColor : undefined,
+      lastStampWasCustom: useCustomStamp,
+    });
   }, [selectedStamp, tapPos, stampSizeIdx, state.currentPage, tapRenderScale, dispatch, useCustomStamp, customStampText, customStampColor]);
 
   // 日付スタンプ配置
@@ -429,6 +438,33 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
         {/* --- スタンプタブ --- */}
         {tab === 'stamp' && (
           <div className="space-y-3">
+            {/* 前回のスタンプ再利用 */}
+            {(() => {
+              const s = loadSettings();
+              const hasLast = s.lastStampWasCustom ? !!s.lastStampCustomText : !!s.lastStampLabel;
+              if (!hasLast) return null;
+              const label = s.lastStampWasCustom ? s.lastStampCustomText : s.lastStampLabel;
+              return (
+                <button
+                  onClick={() => {
+                    if (s.lastStampWasCustom && s.lastStampCustomText) {
+                      setUseCustomStamp(true);
+                      setCustomStampText(s.lastStampCustomText);
+                      if (s.lastStampCustomColor) setCustomStampColor(s.lastStampCustomColor);
+                    } else if (s.lastStampLabel) {
+                      const found = stamps.find(st => st.label === s.lastStampLabel);
+                      if (found) { setSelectedStamp(found); setUseCustomStamp(false); }
+                    }
+                    if (s.lastStampSizeIdx !== undefined) setStampSizeIdx(s.lastStampSizeIdx);
+                    showDqToast(`「${label}」を読み込みました`, 'success');
+                  }}
+                  className="dq-btn w-full text-sm flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(180deg, #4a3a28 0%, #3b2a1a 100%)', borderColor: '#8b6914' }}
+                >
+                  ⭐ 前回のスタンプ「{label}」を使う
+                </button>
+              );
+            })()}
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>スタンプを選択</p>
             <div className="grid grid-cols-3 gap-2">
               {stamps.map((s) => (
@@ -549,6 +585,53 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
                   >
                     ページ中央に配置
                   </button>
+                  {state.numPages > 1 && (
+                    <button
+                      onClick={() => {
+                        const size = stampSizes[stampSizeIdx];
+                        const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
+                        if (!pdfCanvas) return;
+                        const rect = pdfCanvas.getBoundingClientRect();
+                        const centerX = rect.width / 2 - size.width / 2;
+                        const centerY = rect.height / 2 - size.height / 2;
+                        const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
+                        const renderScale = scaleAttr ? parseFloat(scaleAttr) : 1;
+                        let dataURL: string;
+                        if (useCustomStamp && customStampText.trim()) {
+                          dataURL = customStampToDataURL(customStampText.trim(), customStampColor, size);
+                        } else if (selectedStamp) {
+                          dataURL = stampToDataURL(selectedStamp, size);
+                        } else return;
+                        for (let page = 1; page <= state.numPages; page++) {
+                          dispatch({
+                            type: 'ADD_ANNOTATION',
+                            payload: {
+                              id: crypto.randomUUID(),
+                              type: 'image',
+                              page,
+                              position: { x: centerX, y: centerY },
+                              content: dataURL,
+                              style: { width: size.width, height: size.height },
+                              renderScale,
+                              createdAt: Date.now() + page,
+                            },
+                          });
+                        }
+                        showDqToast(`全${state.numPages}ページにスタンプを配置！`, 'success');
+                        saveSettings({
+                          lastStampLabel: useCustomStamp ? undefined : selectedStamp?.label,
+                          lastStampSizeIdx: stampSizeIdx,
+                          lastStampCustomText: useCustomStamp ? customStampText : undefined,
+                          lastStampCustomColor: useCustomStamp ? customStampColor : undefined,
+                          lastStampWasCustom: useCustomStamp,
+                        });
+                      }}
+                      className="dq-btn w-full text-sm flex items-center justify-center gap-2"
+                      style={{ background: 'linear-gradient(180deg, #166534 0%, #14532d 100%)', borderColor: '#22c55e' }}
+                    >
+                      全ページに配置 ({state.numPages}ページ)
+                    </button>
+                  )}
                 </div>
               ) : null
             ) : !useCustomStamp ? (

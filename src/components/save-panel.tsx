@@ -36,13 +36,15 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   useEffect(() => {
     if (isOpen && state.file?.name) {
       const baseName = state.file.name.replace(/\.pdf$/i, '');
-      setFilename(baseName);
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+      setFilename(`${baseName}_${dateStr}`);
     }
   }, [isOpen, state.file?.name]);
 
   const getFilename = () => {
-    const base = filename.trim() || state.file?.name?.replace('.pdf', '') || 'document';
-    return `${base}_edited.pdf`;
+    const base = filename.trim() || 'document';
+    return `${base}.pdf`;
   };
 
   const applyAnnotations = useCallback(async (): Promise<Uint8Array> => {

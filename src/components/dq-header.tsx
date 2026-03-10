@@ -108,7 +108,10 @@ export default function DqHeader() {
             )}
           </h1>
           {hasPdf && state.file && (
-            <span className="dq-text text-[9px] truncate opacity-60 leading-tight" style={{ maxWidth: 160 }}>
+            <span className="dq-text text-[9px] truncate opacity-60 leading-tight flex items-center gap-1" style={{ maxWidth: 180 }}>
+              {state.isModified && (
+                <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: '#d4a017', boxShadow: '0 0 6px rgba(212,160,23,0.6)', animation: 'dq-placement-blink 2s ease-in-out infinite' }} title="未保存の変更があります" />
+              )}
               {state.file.name}
             </span>
           )}
