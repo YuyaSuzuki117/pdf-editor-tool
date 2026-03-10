@@ -562,78 +562,80 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
             </div>
 
             {(selectedStamp || (useCustomStamp && customStampText.trim())) ? (
-              !tapPos ? (
-                <div className="space-y-2">
-                  <div
-                    className="dq-message-box"
-                    style={{
-                      background: 'rgba(59,130,246,0.15)',
-                      border: '2px solid #3b82f6',
-                      borderRadius: 4,
-                      padding: '12px 16px',
-                      animation: 'dq-placement-blink 1.5s ease-in-out infinite',
-                    }}
-                  >
-                    <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
-                      PDFをタップしてスタンプを配置
-                    </p>
-                  </div>
-                  <button
-                    onClick={handlePlaceCenter}
-                    className="dq-btn w-full text-sm"
-                    style={{ background: 'linear-gradient(180deg, #4a3a28 0%, #3b2a1a 100%)' }}
-                  >
-                    ページ中央に配置
-                  </button>
-                  {state.numPages > 1 && (
-                    <button
-                      onClick={() => {
-                        const size = stampSizes[stampSizeIdx];
-                        const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
-                        if (!pdfCanvas) return;
-                        const rect = pdfCanvas.getBoundingClientRect();
-                        const centerX = rect.width / 2 - size.width / 2;
-                        const centerY = rect.height / 2 - size.height / 2;
-                        const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
-                        const renderScale = scaleAttr ? parseFloat(scaleAttr) : 1;
-                        let dataURL: string;
-                        if (useCustomStamp && customStampText.trim()) {
-                          dataURL = customStampToDataURL(customStampText.trim(), customStampColor, size);
-                        } else if (selectedStamp) {
-                          dataURL = stampToDataURL(selectedStamp, size);
-                        } else return;
-                        for (let page = 1; page <= state.numPages; page++) {
-                          dispatch({
-                            type: 'ADD_ANNOTATION',
-                            payload: {
-                              id: crypto.randomUUID(),
-                              type: 'image',
-                              page,
-                              position: { x: centerX, y: centerY },
-                              content: dataURL,
-                              style: { width: size.width, height: size.height },
-                              renderScale,
-                              createdAt: Date.now() + page,
-                            },
-                          });
-                        }
-                        showDqToast(`全${state.numPages}ページにスタンプを配置！`, 'success');
-                        saveSettings({
-                          lastStampLabel: useCustomStamp ? undefined : selectedStamp?.label,
-                          lastStampSizeIdx: stampSizeIdx,
-                          lastStampCustomText: useCustomStamp ? customStampText : undefined,
-                          lastStampCustomColor: useCustomStamp ? customStampColor : undefined,
-                          lastStampWasCustom: useCustomStamp,
-                        });
+              <div className="space-y-2">
+                {!tapPos && (
+                  <>
+                    <div
+                      className="dq-message-box"
+                      style={{
+                        background: 'rgba(59,130,246,0.15)',
+                        border: '2px solid #3b82f6',
+                        borderRadius: 4,
+                        padding: '12px 16px',
+                        animation: 'dq-placement-blink 1.5s ease-in-out infinite',
                       }}
-                      className="dq-btn w-full text-sm flex items-center justify-center gap-2"
-                      style={{ background: 'linear-gradient(180deg, #166534 0%, #14532d 100%)', borderColor: '#22c55e' }}
                     >
-                      全ページに配置 ({state.numPages}ページ)
+                      <p className="dq-text text-sm font-bold" style={{ color: '#93c5fd' }}>
+                        PDFをタップしてスタンプを配置
+                      </p>
+                    </div>
+                    <button
+                      onClick={handlePlaceCenter}
+                      className="dq-btn w-full text-sm"
+                      style={{ background: 'linear-gradient(180deg, #4a3a28 0%, #3b2a1a 100%)' }}
+                    >
+                      ページ中央に配置
                     </button>
-                  )}
-                </div>
-              ) : null
+                  </>
+                )}
+                {state.numPages > 1 && (
+                  <button
+                    onClick={() => {
+                      const size = stampSizes[stampSizeIdx];
+                      const pdfCanvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
+                      if (!pdfCanvas) return;
+                      const rect = pdfCanvas.getBoundingClientRect();
+                      const centerX = rect.width / 2 - size.width / 2;
+                      const centerY = rect.height / 2 - size.height / 2;
+                      const scaleAttr = pdfCanvas.getAttribute('data-render-scale');
+                      const renderScale = scaleAttr ? parseFloat(scaleAttr) : 1;
+                      let dataURL: string;
+                      if (useCustomStamp && customStampText.trim()) {
+                        dataURL = customStampToDataURL(customStampText.trim(), customStampColor, size);
+                      } else if (selectedStamp) {
+                        dataURL = stampToDataURL(selectedStamp, size);
+                      } else return;
+                      for (let page = 1; page <= state.numPages; page++) {
+                        dispatch({
+                          type: 'ADD_ANNOTATION',
+                          payload: {
+                            id: crypto.randomUUID(),
+                            type: 'image',
+                            page,
+                            position: { x: centerX, y: centerY },
+                            content: dataURL,
+                            style: { width: size.width, height: size.height },
+                            renderScale,
+                            createdAt: Date.now() + page,
+                          },
+                        });
+                      }
+                      showDqToast(`全${state.numPages}ページにスタンプを配置！`, 'success');
+                      saveSettings({
+                        lastStampLabel: useCustomStamp ? undefined : selectedStamp?.label,
+                        lastStampSizeIdx: stampSizeIdx,
+                        lastStampCustomText: useCustomStamp ? customStampText : undefined,
+                        lastStampCustomColor: useCustomStamp ? customStampColor : undefined,
+                        lastStampWasCustom: useCustomStamp,
+                      });
+                    }}
+                    className="dq-btn w-full text-sm flex items-center justify-center gap-2"
+                    style={{ background: 'linear-gradient(180deg, #166534 0%, #14532d 100%)', borderColor: '#22c55e' }}
+                  >
+                    全ページに配置 ({state.numPages}ページ)
+                  </button>
+                )}
+              </div>
             ) : !useCustomStamp ? (
               <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(92,74,46,0.5)', borderRadius: 4, padding: '12px 16px' }}>
                 <p className="dq-text text-sm opacity-60">上からスタンプを選んでください</p>
