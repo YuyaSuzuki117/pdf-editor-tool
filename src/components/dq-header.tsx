@@ -125,9 +125,24 @@ export default function DqHeader() {
         </div>
       )}
 
-      {/* 右: 印刷 + 新規ファイル選択 */}
+      {/* 右: 保存 + 印刷 + 新規ファイル選択 */}
       {hasPdf && (
         <div className="flex items-center gap-1">
+          {state.isModified && (
+            <button
+              onClick={() => dispatch({ type: 'SET_TOOL', payload: 'save' })}
+              className="dq-window flex items-center justify-center w-9 h-9 min-h-[44px] min-w-[44px] rounded-lg cursor-pointer select-none active:scale-90 transition-transform"
+              aria-label="保存"
+              title="保存 (Ctrl+S)"
+              style={{ borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.4)' }}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+            </button>
+          )}
           <button
             onClick={handlePrint}
             disabled={printing}

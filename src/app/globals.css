@@ -672,14 +672,26 @@ textarea:focus-visible {
 
 /* ===== モバイル最適化 ===== */
 @media (max-width: 640px) {
-  /* ツールバーの文字を少し小さく、パディング詰め */
   .dq-btn {
     padding: 8px 14px;
     min-height: 44px;
   }
-  /* ページナビボタンを少し大きく */
   .pdf-canvas-container {
     padding-bottom: 60px;
+  }
+}
+
+/* ===== タブレット横向き最適化 ===== */
+@media (min-width: 768px) {
+  .dq-btn {
+    min-height: 48px;
+  }
+}
+
+/* ===== 横向きモバイル ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+  .pdf-canvas-container {
+    padding-bottom: 48px;
   }
 }
 

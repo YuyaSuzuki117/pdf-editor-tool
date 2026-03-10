@@ -119,6 +119,8 @@ const DqToolbar = React.memo(function DqToolbar() {
       document.body.appendChild(flash);
       flash.addEventListener('animationend', () => flash.remove());
       prevToolRef.current = mode;
+      // ハプティックフィードバック（対応デバイスのみ）
+      try { navigator.vibrate?.(10); } catch { /* ignore */ }
     }
     dispatch({ type: 'SET_TOOL', payload: mode });
   }, [dispatch]);
@@ -171,7 +173,7 @@ const DqToolbar = React.memo(function DqToolbar() {
               title={title}
               aria-label={label}
               aria-pressed={active}
-              className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[42px] gap-0.5 px-1.5 transition-all cursor-pointer select-none active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 ${
                 active ? 'text-[var(--ynk-gold)]' : 'text-[var(--ynk-bone)] opacity-60 hover:opacity-100'
               }`}
               style={active ? {

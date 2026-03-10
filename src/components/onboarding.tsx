@@ -16,12 +16,12 @@ const stepCharacters = [
 ];
 
 const steps = [
-  { title: '\u307F\u308B\u30E2\u30FC\u30C9', description: '\u307F\u308B\u30E2\u30FC\u30C9\u3067PDF\u3092\u95B2\u89A7\u3002\n\u30B9\u30EF\u30A4\u30D7\u3067\u30DA\u30FC\u30B8\u79FB\u52D5' },
-  { title: '\u6587\u5B57\u30E2\u30FC\u30C9', description: '\u6587\u5B57\u3092\u30BF\u30C3\u30D7\u3057\u3066\u3001\nPDF\u306B\u76F4\u63A5\u30C6\u30AD\u30B9\u30C8\u3092\u8FFD\u52A0' },
-  { title: '\u63CF\u304F\u30E2\u30FC\u30C9', description: '\u63CF\u304F\u3067\u30D5\u30EA\u30FC\u30CF\u30F3\u30C9\u63CF\u753B' },
-  { title: '\u30B9\u30BF\u30F3\u30D7\u30FB\u7F72\u540D', description: '\u627F\u8A8D\u5370\u3084\u7F72\u540D\u3092\nPDF\u306B\u76F4\u63A5\u914D\u7F6E' },
-  { title: '\u30DA\u30FC\u30B8\u7BA1\u7406', description: '\u30DA\u30FC\u30B8\u306E\u56DE\u8EE2\u30FB\u524A\u9664\u30FB\n\u4E26\u3073\u66FF\u3048\u30FB\u8FFD\u52A0' },
-  { title: '\u4FDD\u5B58', description: '\u4FDD\u5B58\u3067\u7DE8\u96C6\u6E08\u307FPDF\u3092\n\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9' },
+  { title: 'みるモード', description: 'みるモードでPDFを閲覧。\nスワイプでページ移動\nピンチでズーム' },
+  { title: '文字モード', description: 'テキスト入力 → PDFタップで配置\n文字サイズ・色・フォント選択可能' },
+  { title: '描くモード', description: '描くでフリーハンド描画\nペンと消しゴム切替可能' },
+  { title: 'スタンプ・署名', description: '承認印や署名をPDFに直接配置\n全ページ一括配置も可能' },
+  { title: 'ページ管理', description: 'ページの回転・削除・\n並び替え・追加' },
+  { title: '便利機能', description: 'Ctrl+Z: 元に戻す\nCtrl+S: 保存\n?: ショートカット一覧' },
 ];
 
 export default function Onboarding() {

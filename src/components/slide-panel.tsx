@@ -222,7 +222,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
           className="px-3 overflow-y-auto"
           style={{
             maxHeight: contentMaxHeight,
-            paddingBottom: panelSize === 'minimized' ? 0 : '1rem',
+            paddingBottom: panelSize === 'minimized' ? 0 : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
             transition: 'max-height 0.25s ease',
             overflow: panelSize === 'minimized' ? 'hidden' : 'auto',
           }}

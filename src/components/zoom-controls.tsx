@@ -104,6 +104,7 @@ const ZoomControls = React.memo(function ZoomControls() {
     <div
       ref={containerRef}
       className="fixed bottom-20 right-3 z-[45] flex flex-col items-center gap-1.5"
+      style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', marginRight: 'env(safe-area-inset-right, 0px)' }}
     >
       <div
         className="flex flex-col items-center gap-1 p-1.5 rounded-none"

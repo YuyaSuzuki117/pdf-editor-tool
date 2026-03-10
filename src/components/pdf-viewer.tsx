@@ -54,7 +54,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
       const dy = clientY - dragState.startY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       dragDistRef.current = dist;
-      if (dist >= 5) {
+      if (dist >= 8) {
         isDraggingRef.current = true;
       }
       offsetRef.current = { x: dx, y: dy };
@@ -160,7 +160,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (dragDistRef.current < 5) onDelete(ann.id);
+              if (dragDistRef.current < 8) onDelete(ann.id);
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -221,7 +221,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (dragDistRef.current < 5) onDelete(ann.id);
+              if (dragDistRef.current < 8) onDelete(ann.id);
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -264,7 +264,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (dragDistRef.current < 5) onDelete(ann.id);
+            if (dragDistRef.current < 8) onDelete(ann.id);
           }}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
@@ -351,7 +351,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (dragDistRef.current < 5) onDelete(ann.id);
+              if (dragDistRef.current < 8) onDelete(ann.id);
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -434,7 +434,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           {renderShape()}
         </svg>
         <button
-          onClick={(e) => { e.stopPropagation(); if (dragDistRef.current < 5) onDelete(ann.id); }}
+          onClick={(e) => { e.stopPropagation(); if (dragDistRef.current < 8) onDelete(ann.id); }}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
@@ -484,7 +484,7 @@ const AnnotationItem = React.memo(function AnnotationItem({
           </div>
         )}
         <button
-          onClick={(e) => { e.stopPropagation(); if (dragDistRef.current < 5) onDelete(ann.id); }}
+          onClick={(e) => { e.stopPropagation(); if (dragDistRef.current < 8) onDelete(ann.id); }}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 min-w-[28px] min-h-[28px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-md"
