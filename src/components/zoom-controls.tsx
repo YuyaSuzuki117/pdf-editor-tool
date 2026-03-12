@@ -10,7 +10,11 @@ import { uiEvents } from '@/lib/ui-events';
 
 const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
 
-const ZoomControls = React.memo(function ZoomControls() {
+type ZoomControlsProps = {
+  embedded?: boolean;
+};
+
+const ZoomControls = React.memo(function ZoomControls({ embedded = false }: ZoomControlsProps) {
   const { state, dispatch } = usePDF();
   const containerRef = useRef<HTMLDivElement>(null);
   const [copying, setCopying] = useState(false);
@@ -119,6 +123,101 @@ const ZoomControls = React.memo(function ZoomControls() {
     boxShadow: '0 3px 0 #1a1008, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(139,105,20,0.3), inset 0 -1px 0 rgba(0,0,0,0.3)',
     outline: '1px solid #2a1e12',
   };
+
+  if (embedded) {
+    return (
+      <div ref={containerRef} className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={zoomOut}
+            disabled={state.scale <= 0.25}
+            className="flex items-center justify-center w-10 h-10 min-w-[44px] rounded-xl cursor-pointer select-none active:scale-95 transition-transform"
+            style={leverBtnStyle}
+            aria-label="ズームアウト"
+          >
+            <span className="dq-title text-base leading-none">-</span>
+          </button>
+          <button
+            onClick={fitWidth}
+            className="flex-1 min-h-[40px] px-3 rounded-xl cursor-pointer select-none active:scale-95"
+            style={{
+              background: 'radial-gradient(circle, #1a1008 60%, #2a1e12 100%)',
+              border: '2px solid #5c4a2e',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(92,74,46,0.2)',
+            }}
+            title="幅に合わせる"
+            aria-label={`${pct}% - クリックで幅に合わせる`}
+          >
+            <span className="dq-text text-xs whitespace-nowrap" style={{ color: '#d4a017', textShadow: '0 0 6px rgba(212,160,23,0.4)' }}>
+              {pct}% / 幅合わせ
+            </span>
+          </button>
+          <button
+            onClick={zoomIn}
+            disabled={state.scale >= 5}
+            className="flex items-center justify-center w-10 h-10 min-w-[44px] rounded-xl cursor-pointer select-none active:scale-95 transition-transform"
+            style={leverBtnStyle}
+            aria-label="ズームイン"
+          >
+            <span className="dq-title text-base leading-none">+</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <button
+            onClick={fitPage}
+            className="flex flex-col items-center justify-center gap-1 min-h-[44px] rounded-xl cursor-pointer select-none active:scale-95 transition-transform"
+            style={leverBtnStyle}
+            aria-label="ページ全体表示"
+            title="ページ全体表示"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" />
+            </svg>
+            <span className="dq-text text-[9px]" style={{ color: 'var(--ynk-bone)' }}>全体</span>
+          </button>
+          <button
+            onClick={fitWidth}
+            className="flex flex-col items-center justify-center gap-1 min-h-[44px] rounded-xl cursor-pointer select-none active:scale-95 transition-transform"
+            style={leverBtnStyle}
+            aria-label="幅に合わせる"
+            title="幅に合わせる"
+          >
+            <span className="dq-title text-sm leading-none" style={{ color: 'var(--ynk-gold)' }}>幅</span>
+            <span className="dq-text text-[9px]" style={{ color: 'var(--ynk-bone)' }}>100%</span>
+          </button>
+          <button
+            onClick={handleRotate}
+            className="flex flex-col items-center justify-center gap-1 min-h-[44px] rounded-xl cursor-pointer select-none active:scale-95 transition-transform"
+            style={leverBtnStyle}
+            aria-label="ページ回転"
+            title="ページを90°回転"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+              <path d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            <span className="dq-text text-[9px]" style={{ color: 'var(--ynk-bone)' }}>回転</span>
+          </button>
+          <button
+            onClick={handleCopyText}
+            disabled={copying}
+            className="flex flex-col items-center justify-center gap-1 min-h-[44px] rounded-xl cursor-pointer select-none active:scale-95 transition-transform"
+            style={leverBtnStyle}
+            aria-label="テキストコピー"
+            title="このページのテキストをコピー"
+          >
+            {copying ? (
+              <div className="dq-spinner-sm" style={{ width: 14, height: 14 }} />
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+                <path d="M4 6h2v2H4zM4 10h2v2H4zM4 14h2v2H4zM10 6h10M10 10h10M10 14h7" />
+              </svg>
+            )}
+            <span className="dq-text text-[9px]" style={{ color: 'var(--ynk-bone)' }}>文字</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

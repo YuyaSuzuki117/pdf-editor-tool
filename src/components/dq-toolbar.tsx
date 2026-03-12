@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import type { ToolMode } from '@/types/pdf';
 
@@ -111,6 +111,7 @@ const tools: ToolDef[] = [
 const DqToolbar = React.memo(function DqToolbar() {
   const { state, dispatch, undoStackSize, redoStackSize } = usePDF();
   const prevToolRef = useRef(state.toolMode);
+  const [expanded, setExpanded] = useState(false);
 
   const handleToolChange = useCallback((mode: ToolMode) => {
     if (mode !== prevToolRef.current) {
@@ -125,21 +126,51 @@ const DqToolbar = React.memo(function DqToolbar() {
     dispatch({ type: 'SET_TOOL', payload: mode });
   }, [dispatch]);
 
+  const activeTool = tools.find(({ mode }) => mode === state.toolMode) ?? tools[0];
+  const controlLabelVisible = (mode: ToolMode) => expanded || state.toolMode === mode;
+  const metaLabelVisible = expanded;
+
   return (
     <div
-      className="dq-window rounded-none border-x-0 border-b-0 z-50 shrink-0 ynk-stone-floor"
+      className="z-50 shrink-0 px-2 pt-2"
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        background: 'linear-gradient(180deg, #3a3228 0%, #2a2218 50%, #1e1810 100%)',
-        borderTop: '3px solid #5c4a2e',
-        boxShadow: '0 -4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(92,74,46,0.2)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)',
       }}
     >
-      <div className="flex items-stretch justify-around overflow-x-auto" role="toolbar" aria-label="PDF編集ツール">
+      <div
+        className="dq-window mx-auto flex w-full max-w-max items-center gap-1 overflow-x-auto rounded-[20px] px-2 py-1.5 ynk-stone-floor"
+        role="toolbar"
+        aria-label="PDF編集ツール"
+        style={{
+          background: 'linear-gradient(180deg, rgba(58,50,40,0.96) 0%, rgba(42,34,24,0.96) 58%, rgba(30,24,16,0.98) 100%)',
+          border: '2px solid #5c4a2e',
+          boxShadow: '0 8px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(92,74,46,0.18)',
+        }}
+      >
+        <button
+          onClick={() => setExpanded((current) => !current)}
+          className="flex items-center gap-2 min-h-[44px] px-3 rounded-2xl cursor-pointer select-none active:scale-95 transition-transform"
+          title={expanded ? 'ツール名をたたむ' : `現在: ${activeTool.label}`}
+          aria-label={expanded ? 'ツール名をたたむ' : `現在のツール: ${activeTool.label}`}
+          aria-pressed={expanded}
+          style={{
+            background: 'linear-gradient(180deg, rgba(92,74,46,0.34) 0%, rgba(42,30,18,0.9) 100%)',
+            border: '1px solid rgba(139,105,20,0.45)',
+            color: 'var(--ynk-bone)',
+            flexShrink: 0,
+          }}
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M4 7h16M4 12h16M4 17h10" />
+          </svg>
+          <span className="dq-text text-[10px] whitespace-nowrap" style={{ color: 'var(--ynk-gold)' }}>
+            {expanded ? '道具をたたむ' : activeTool.label}
+          </span>
+        </button>
         {undoStackSize > 0 && (
           <button
             onClick={() => dispatch({ type: 'UNDO_ANNOTATION' })}
-            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[44px] gap-0.5 px-1.5 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
+            className="relative flex items-center justify-center min-h-[44px] min-w-[44px] gap-2 px-3 rounded-2xl transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
             title="元に戻す (Ctrl+Z)"
             aria-label="元に戻す"
           >
@@ -147,13 +178,13 @@ const DqToolbar = React.memo(function DqToolbar() {
               <polyline points="1 4 1 10 7 10" />
               <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
-            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">戻す</span>
+            {metaLabelVisible && <span className="dq-text text-[10px] leading-tight whitespace-nowrap">戻す</span>}
           </button>
         )}
         {redoStackSize > 0 && (
           <button
             onClick={() => dispatch({ type: 'REDO_ANNOTATION' })}
-            className="relative flex flex-col items-center justify-center min-h-[56px] min-w-[44px] gap-0.5 px-1.5 transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
+            className="relative flex items-center justify-center min-h-[44px] min-w-[44px] gap-2 px-3 rounded-2xl transition-all cursor-pointer select-none active:scale-95 text-[var(--ynk-bone)] opacity-80 hover:opacity-100"
             title="やり直し (Ctrl+Shift+Z)"
             aria-label="やり直し"
           >
@@ -161,7 +192,7 @@ const DqToolbar = React.memo(function DqToolbar() {
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
             </svg>
-            <span className="dq-text text-[10px] leading-tight whitespace-nowrap">進む</span>
+            {metaLabelVisible && <span className="dq-text text-[10px] leading-tight whitespace-nowrap">進む</span>}
           </button>
         )}
         {tools.map(({ mode, label, icon, title }) => {
@@ -173,13 +204,13 @@ const DqToolbar = React.memo(function DqToolbar() {
               title={title}
               aria-label={label}
               aria-pressed={active}
-              className={`relative flex flex-col items-center justify-center min-h-[56px] min-w-[48px] gap-0.5 px-2 transition-all cursor-pointer select-none active:scale-95 ${
+              className={`relative flex items-center justify-center min-h-[44px] min-w-[44px] gap-2 px-3 rounded-2xl transition-all cursor-pointer select-none active:scale-95 ${
                 active ? 'text-[var(--ynk-gold)]' : 'text-[var(--ynk-bone)] opacity-60 hover:opacity-100'
               }`}
               style={active ? {
                 background: 'linear-gradient(180deg, rgba(212,160,23,0.15) 0%, rgba(212,160,23,0.05) 100%)',
                 boxShadow: '0 0 12px rgba(212,160,23,0.3), 0 0 24px rgba(212,160,23,0.15), inset 0 -2px 8px rgba(212,160,23,0.2)',
-                borderTop: '2px solid #d4a017',
+                border: '1px solid rgba(212,160,23,0.5)',
               } : {}}
             >
               {active && (
@@ -197,7 +228,9 @@ const DqToolbar = React.memo(function DqToolbar() {
                 </>
               )}
               <span className={active ? 'ynk-active-sparkle' : ''}>{icon}</span>
-              <span className="dq-text text-[10px] leading-tight whitespace-nowrap">{label}</span>
+              {controlLabelVisible(mode) && (
+                <span className="dq-text text-[10px] leading-tight whitespace-nowrap">{label}</span>
+              )}
             </button>
           );
         })}

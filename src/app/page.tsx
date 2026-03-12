@@ -6,7 +6,6 @@ import DqDropZone from '@/components/dq-drop-zone';
 import DqHeader from '@/components/dq-header';
 import DqToolbar from '@/components/dq-toolbar';
 import PDFViewer from '@/components/pdf-viewer';
-import ZoomControls from '@/components/zoom-controls';
 import TextEditorPanel from '@/components/text-editor-panel';
 import DrawPanel from '@/components/draw-panel';
 import ShapePanel from '@/components/shape-panel';
@@ -18,6 +17,7 @@ import AnnotationList from '@/components/annotation-list';
 import Onboarding from '@/components/onboarding';
 import SearchPanel from '@/components/search-panel';
 import QuickActions from '@/components/quick-actions';
+import UtilityDock from '@/components/utility-dock';
 import { ErrorBoundary } from '@/components/error-boundary';
 import DqConfirmProvider from '@/components/dq-confirm';
 import ShortcutHelp from '@/components/shortcut-help';
@@ -348,11 +348,11 @@ function PDFApp() {
           </div>
         </div>
       )}
-      <SearchPanel />
+      <SearchPanel showTrigger={false} />
       <QuickActions />
       <PDFViewer />
-      <PageThumbnails />
-      <ZoomControls />
+      <PageThumbnails showTrigger={false} />
+      <UtilityDock />
       <DqToolbar />
       <TextEditorPanel isOpen={state.toolMode === 'text'} onClose={closePanel} />
       <DrawPanel isOpen={state.toolMode === 'draw'} onClose={closePanel} />
@@ -361,7 +361,7 @@ function PDFApp() {
       <StampPanel isOpen={state.toolMode === 'image'} onClose={closePanel} />
       <PageManager isOpen={state.toolMode === 'pages'} onClose={closePanel} />
       <SavePanel isOpen={state.toolMode === 'save'} onClose={closePanel} />
-      <AnnotationList />
+      <AnnotationList showTrigger={false} />
       <Onboarding />
       <ShortcutHelp />
     </div>

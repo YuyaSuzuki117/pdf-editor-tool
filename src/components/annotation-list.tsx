@@ -29,7 +29,11 @@ const typeLabels: Record<AnnotationType, string> = {
 type FilterType = 'all' | AnnotationType;
 type PageScope = 'all' | 'current';
 
-export default function AnnotationList() {
+type AnnotationListProps = {
+  showTrigger?: boolean;
+};
+
+export default function AnnotationList({ showTrigger = true }: AnnotationListProps) {
   const { state, dispatch } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -115,41 +119,45 @@ export default function AnnotationList() {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-16 right-3 z-50 flex items-center justify-center w-10 h-10 min-h-[44px] min-w-[44px] cursor-pointer select-none active:scale-90 transition-transform"
-        style={{
-          background: 'linear-gradient(180deg, #5c4a2e 0%, #3b2a1a 50%, #2a1e12 100%)',
-          border: '2px solid #8b6914',
-          boxShadow: '0 3px 0 #1a1008, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(139,105,20,0.3)',
-        }}
-        title="アノテーション一覧"
-        aria-label="アノテーション一覧を開く"
-        aria-expanded={isOpen}
-      >
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
-          <line x1="8" y1="6" x2="21" y2="6" />
-          <line x1="8" y1="12" x2="21" y2="12" />
-          <line x1="8" y1="18" x2="21" y2="18" />
-          <line x1="3" y1="6" x2="3.01" y2="6" />
-          <line x1="3" y1="12" x2="3.01" y2="12" />
-          <line x1="3" y1="18" x2="3.01" y2="18" />
-        </svg>
-        <span
-          className="absolute -top-1 -right-1 flex items-center justify-center text-[9px] min-w-[16px] h-[16px] px-1 rounded-full"
+      {showTrigger && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed top-16 right-3 z-50 flex items-center justify-center w-10 h-10 min-h-[44px] min-w-[44px] cursor-pointer select-none active:scale-90 transition-transform"
           style={{
-            background: 'linear-gradient(180deg, #d4a017 0%, #8b6914 100%)',
-            color: '#1a1008',
-            fontWeight: 700,
+            background: 'linear-gradient(180deg, #5c4a2e 0%, #3b2a1a 50%, #2a1e12 100%)',
+            border: '2px solid #8b6914',
+            boxShadow: '0 3px 0 #1a1008, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(139,105,20,0.3)',
           }}
+          title="アノテーション一覧"
+          aria-label="アノテーション一覧を開く"
+          aria-expanded={isOpen}
         >
-          {state.annotations.length}
-        </span>
-      </button>
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+          <span
+            className="absolute -top-1 -right-1 flex items-center justify-center text-[9px] min-w-[16px] h-[16px] px-1 rounded-full"
+            style={{
+              background: 'linear-gradient(180deg, #d4a017 0%, #8b6914 100%)',
+              color: '#1a1008',
+              fontWeight: 700,
+            }}
+          >
+            {state.annotations.length}
+          </span>
+        </button>
+      )}
 
       {isOpen && (
-        <div role="dialog" aria-label="アノテーション一覧" className="fixed top-28 right-3 left-3 sm:left-auto z-50 sm:w-80 max-h-[65vh] flex flex-col"
+        <div role="dialog" aria-label="アノテーション一覧" className="fixed right-3 left-3 sm:left-auto z-50 sm:w-80 flex flex-col"
           style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)',
             background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',
             border: '3px solid #5c4a2e',
             boxShadow: '0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(92,74,46,0.2)',

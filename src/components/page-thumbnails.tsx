@@ -11,7 +11,11 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 const THUMB_WIDTH = 80;
 type ThumbnailData = { dataURL: string; width: number; height: number };
 
-const PageThumbnails = React.memo(function PageThumbnails() {
+type PageThumbnailsProps = {
+  showTrigger?: boolean;
+};
+
+const PageThumbnails = React.memo(function PageThumbnails({ showTrigger = true }: PageThumbnailsProps) {
   const { state, dispatch } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState<Map<number, ThumbnailData>>(new Map());
@@ -108,43 +112,57 @@ const PageThumbnails = React.memo(function PageThumbnails() {
   return (
     <>
       {/* トグルボタン */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed left-0 z-[42] flex flex-col items-center justify-center w-10 h-20 cursor-pointer select-none gap-1"
-        style={{
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: 'linear-gradient(90deg, #3b2a1a 0%, #2a1e12 100%)',
-          border: '2px solid #5c4a2e',
-          borderLeft: 'none',
-          borderRadius: '0 4px 4px 0',
-          boxShadow: '2px 0 8px rgba(0,0,0,0.5)',
-        }}
-        title={isOpen ? 'サムネイルを閉じる' : 'ページサムネイル'}
-        aria-label={isOpen ? 'サムネイルを閉じる' : 'ページサムネイルを開く'}
-      >
-        {isOpen ? <ChevronLeft size={14} style={{ color: 'var(--ynk-gold)' }} /> : <ChevronRight size={14} style={{ color: 'var(--ynk-gold)' }} />}
-        <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-gold)', writingMode: 'vertical-rl', textOrientation: 'upright', lineHeight: 1 }}>
-          {isOpen ? '閉' : '頁'}
-        </span>
-      </button>
+      {showTrigger && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed left-3 z-[42] flex items-center justify-center h-10 px-3 cursor-pointer select-none gap-1 rounded-lg"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)',
+            background: 'linear-gradient(90deg, #3b2a1a 0%, #2a1e12 100%)',
+            border: '2px solid #5c4a2e',
+            boxShadow: '2px 2px 8px rgba(0,0,0,0.45)',
+          }}
+          title={isOpen ? 'サムネイルを閉じる' : 'ページサムネイル'}
+          aria-label={isOpen ? 'サムネイルを閉じる' : 'ページサムネイルを開く'}
+        >
+          {isOpen ? <ChevronLeft size={14} style={{ color: 'var(--ynk-gold)' }} /> : <ChevronRight size={14} style={{ color: 'var(--ynk-gold)' }} />}
+          <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-gold)' }}>
+            ページ
+          </span>
+        </button>
+      )}
 
       {/* サムネイルパネル */}
       {isOpen && (
         <div
-          className="fixed left-0 z-[42] page-thumbnail-strip"
+          className="fixed left-0 z-[42] page-thumbnail-strip flex flex-col"
           style={{
-            top: 56,
-            bottom: 56,
+            top: 'calc(env(safe-area-inset-top, 0px) + 3.75rem)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)',
             width: THUMB_WIDTH + 28,
             background: 'linear-gradient(90deg, #1e1508 0%, #2a1e12 100%)',
             borderRight: '2px solid #5c4a2e',
             boxShadow: '4px 0 12px rgba(0,0,0,0.5)',
-            overflowY: 'auto',
             overflowX: 'hidden',
           }}
         >
-          <div ref={scrollRef} className="flex flex-col items-center gap-2 py-2 px-1.5">
+          <div
+            className="flex items-center justify-between px-2 py-2 shrink-0"
+            style={{ borderBottom: '1px solid rgba(92,74,46,0.45)', background: 'rgba(0,0,0,0.18)' }}
+          >
+            <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-gold)' }}>
+              ページ一覧
+            </span>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="flex items-center justify-center w-7 h-7 min-w-[28px] min-h-[28px] cursor-pointer"
+              style={{ color: 'var(--ynk-bone)' }}
+              aria-label="ページ一覧を閉じる"
+            >
+              <ChevronLeft size={14} />
+            </button>
+          </div>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col items-center gap-2 py-2 px-1.5">
             {loading && thumbnails.size === 0 && (
               <div className="dq-spinner-sm my-4" />
             )}

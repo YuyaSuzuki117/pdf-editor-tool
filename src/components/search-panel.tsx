@@ -11,7 +11,11 @@ interface SearchResult {
   count: number;
 }
 
-export default function SearchPanel() {
+type SearchPanelProps = {
+  showTrigger?: boolean;
+};
+
+export default function SearchPanel({ showTrigger = true }: SearchPanelProps) {
   const { state, dispatch } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -140,7 +144,7 @@ export default function SearchPanel() {
   return (
     <>
       {/* 検索トリガーボタン（ヘッダー用） */}
-      {!isOpen && (
+      {showTrigger && !isOpen && (
         <button
           onClick={openPanel}
           className="fixed top-2 right-[8.5rem] z-[65] dq-btn-small flex items-center justify-center"
@@ -155,10 +159,15 @@ export default function SearchPanel() {
       {/* 検索バー */}
       {isOpen && (
         <div
-          className="fixed top-0 left-0 right-0 z-[65] dq-window"
-          style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '8px 12px' }}
+          className="fixed left-1/2 z-[65] w-[min(46rem,calc(100vw-1rem))] -translate-x-1/2 dq-window"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)',
+            padding: '10px 12px',
+            borderRadius: 8,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
+          }}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
             <Search size={16} style={{ color: 'var(--ynk-gold)', flexShrink: 0 }} />
             <input
               ref={inputRef}
