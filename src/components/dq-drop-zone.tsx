@@ -5,13 +5,23 @@ import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
 import { YuunamaHero, YuunamaGoblin, YuunamaDragon, YuunamaSlime, YuunamaSkeleton } from '@/components/dq-characters';
+import { clearDraft, loadDraft } from '@/lib/auto-draft';
 
 type Phase = 'idle' | 'loading' | 'error';
+type DraftSnapshot = ReturnType<typeof loadDraft>;
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatElapsedTime(savedAt: number): string {
+  const minutes = Math.max(1, Math.floor((Date.now() - savedAt) / (60 * 1000)));
+  if (minutes < 60) return `${minutes}分前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}時間前`;
+  return `${Math.floor(hours / 24)}日前`;
 }
 
 export default function DqDropZone() {
@@ -23,6 +33,9 @@ export default function DqDropZone() {
   const [isDragging, setIsDragging] = useState(false);
   const [fileSize, setFileSize] = useState('');
   const [largeFileWarning, setLargeFileWarning] = useState(false);
+  const [draftSnapshot, setDraftSnapshot] = useState<DraftSnapshot>(() => (
+    typeof window === 'undefined' ? null : loadDraft()
+  ));
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -121,6 +134,11 @@ export default function DqDropZone() {
     setProgress(0);
   }, []);
 
+  const discardDraft = useCallback(() => {
+    clearDraft();
+    setDraftSnapshot(null);
+  }, []);
+
   return (
     <div
       className="flex-1 flex items-center justify-center p-6"
@@ -199,6 +217,51 @@ export default function DqDropZone() {
                 >
                   ほりだす！
                 </button>
+
+                {draftSnapshot && (
+                  <div
+                    className="w-full max-w-[280px] mt-1 px-4 py-4"
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(212,160,23,0.14) 0%, rgba(0,0,0,0.28) 100%)',
+                      border: '2px solid rgba(212,160,23,0.55)',
+                      boxShadow: '0 8px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    <p className="dq-title text-sm" style={{ color: 'var(--ynk-gold)' }}>
+                      前回の続きがあります
+                    </p>
+                    <p className="dq-text text-xs mt-2" style={{ color: 'var(--ynk-bone)', opacity: 0.88 }}>
+                      {draftSnapshot.fileName}
+                    </p>
+                    <p className="dq-text text-[11px] mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.68 }}>
+                      {draftSnapshot.annotations.length}件の編集 / {formatElapsedTime(draftSnapshot.savedAt)}
+                    </p>
+                    <p className="dq-text text-[11px] mt-2" style={{ color: 'var(--ynk-bone)', opacity: 0.78, lineHeight: 1.7 }}>
+                      同じPDFを開くと、そのまま下書きを復元できます
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="dq-btn flex-1"
+                        style={{ minHeight: 38, fontSize: 13 }}
+                      >
+                        続きから始める
+                      </button>
+                      <button
+                        onClick={discardDraft}
+                        className="dq-btn-small flex-1"
+                        style={{
+                          minHeight: 38,
+                          background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)',
+                          color: 'var(--ynk-bone)',
+                          borderColor: 'var(--window-border)',
+                        }}
+                      >
+                        破棄
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </>

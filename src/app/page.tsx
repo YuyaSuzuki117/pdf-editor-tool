@@ -26,6 +26,7 @@ import { showDqToast } from '@/lib/toast';
 import { saveDraft, loadDraft, clearDraft } from '@/lib/auto-draft';
 import { mergePdfs } from '@/lib/pdf-editor';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
+import { emitUiEvent, uiEvents } from '@/lib/ui-events';
 import type { ToolMode } from '@/types/pdf';
 
 type DraftSnapshot = NonNullable<ReturnType<typeof loadDraft>>;
@@ -191,6 +192,12 @@ function PDFApp() {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
       if (s.pdfData) dispatch({ type: 'SET_TOOL', payload: 'save' });
+      return;
+    }
+    // Ctrl+O: Open PDF
+    if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+      e.preventDefault();
+      emitUiEvent(uiEvents.openPdfPicker);
       return;
     }
     // Ctrl+P: Print

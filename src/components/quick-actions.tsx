@@ -210,7 +210,7 @@ export default function QuickActions() {
         keywords: 'thumbnail pages strip サムネイル ページ 一覧',
         available: hasPdf && numPages > 1,
         icon: <Layers3 size={16} />,
-        run: () => emitUiEvent(uiEvents.toggleThumbnailStrip),
+        run: () => emitUiEvent(uiEvents.openThumbnailStrip),
       },
       {
         id: 'page-manager',

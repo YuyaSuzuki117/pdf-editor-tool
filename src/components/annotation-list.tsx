@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image as ImageIcon, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus, Lock, Unlock } from 'lucide-react';
+import { X, Type, Pencil, Highlighter, Trash2, Copy, Diamond, StickyNote, Image as ImageIcon, MapPin, Edit3, Eye, EyeOff, Download, CopyPlus, Lock, Unlock, Search } from 'lucide-react';
 import { showDqToast } from '@/lib/toast';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
@@ -27,18 +27,35 @@ const typeLabels: Record<AnnotationType, string> = {
 };
 
 type FilterType = 'all' | AnnotationType;
+type PageScope = 'all' | 'current';
 
 export default function AnnotationList() {
   const { state, dispatch } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [pageScope, setPageScope] = useState<PageScope>('all');
+  const [query, setQuery] = useState('');
   const [annotationsVisible, setAnnotationsVisible] = useState(true);
 
   const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
     const anns = filter === 'all' ? state.annotations : state.annotations.filter(a => a.type === filter);
+    const scoped = pageScope === 'current' ? anns.filter((annotation) => annotation.page === state.currentPage) : anns;
     // ページ順→作成順でソート
-    return [...anns].sort((a, b) => a.page !== b.page ? a.page - b.page : a.createdAt - b.createdAt);
-  }, [state.annotations, filter]);
+    return [...scoped]
+      .filter((annotation) => {
+        if (!normalizedQuery) return true;
+        const haystack = [
+          annotation.content,
+          typeLabels[annotation.type],
+          `page ${annotation.page}`,
+          `p.${annotation.page}`,
+          `ページ ${annotation.page}`,
+        ].join(' ').toLowerCase();
+        return haystack.includes(normalizedQuery);
+      })
+      .sort((a, b) => a.page !== b.page ? a.page - b.page : a.createdAt - b.createdAt);
+  }, [filter, pageScope, query, state.annotations, state.currentPage]);
 
   // 使用されているタイプのみフィルタボタンに表示
   const usedTypes = useMemo(() => {
@@ -172,35 +189,79 @@ export default function AnnotationList() {
           </div>
 
           {/* フィルタ */}
-          {usedTypes.length > 1 && (
-            <div className="flex gap-1 px-2 py-1.5 shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid rgba(92,74,46,0.3)' }}>
+          <div className="px-2 py-2 shrink-0 space-y-2" style={{ borderBottom: '1px solid rgba(92,74,46,0.3)' }}>
+            <div
+              className="flex items-center gap-2 px-2 py-1.5"
+              style={{
+                background: 'rgba(0,0,0,0.22)',
+                border: '1px solid rgba(92,74,46,0.35)',
+                borderRadius: 2,
+              }}
+            >
+              <Search size={14} style={{ color: 'var(--ynk-gold)', flexShrink: 0 }} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="文字・ページ番号で絞り込み"
+                className="dq-text w-full bg-transparent outline-none"
+                style={{ fontSize: 12, color: 'var(--ynk-bone)' }}
+                aria-label="アノテーションを検索"
+              />
+            </div>
+            <div className="flex gap-1 overflow-x-auto">
               <button
-                onClick={() => setFilter('all')}
+                onClick={() => setPageScope('all')}
                 className="dq-text text-[10px] px-2 py-0.5 rounded-sm whitespace-nowrap"
                 style={{
-                  background: filter === 'all' ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.2)',
-                  border: `1px solid ${filter === 'all' ? '#d4a017' : 'rgba(92,74,46,0.3)'}`,
-                  color: filter === 'all' ? '#e8b820' : undefined,
+                  background: pageScope === 'all' ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${pageScope === 'all' ? '#d4a017' : 'rgba(92,74,46,0.3)'}`,
+                  color: pageScope === 'all' ? '#e8b820' : undefined,
                 }}
               >
-                全て
+                全ページ
               </button>
-              {usedTypes.map(type => (
-                <button
-                  key={type}
-                  onClick={() => setFilter(type)}
-                  className="dq-text text-[10px] px-2 py-0.5 rounded-sm whitespace-nowrap flex items-center gap-1"
-                  style={{
-                    background: filter === type ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.2)',
-                    border: `1px solid ${filter === type ? '#d4a017' : 'rgba(92,74,46,0.3)'}`,
-                    color: filter === type ? '#e8b820' : undefined,
-                  }}
-                >
-                  {typeIcons[type]} {typeLabels[type]}
-                </button>
-              ))}
+              <button
+                onClick={() => setPageScope('current')}
+                className="dq-text text-[10px] px-2 py-0.5 rounded-sm whitespace-nowrap"
+                style={{
+                  background: pageScope === 'current' ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${pageScope === 'current' ? '#d4a017' : 'rgba(92,74,46,0.3)'}`,
+                  color: pageScope === 'current' ? '#e8b820' : undefined,
+                }}
+              >
+                現在ページのみ
+              </button>
+              {usedTypes.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setFilter('all')}
+                    className="dq-text text-[10px] px-2 py-0.5 rounded-sm whitespace-nowrap"
+                    style={{
+                      background: filter === 'all' ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.2)',
+                      border: `1px solid ${filter === 'all' ? '#d4a017' : 'rgba(92,74,46,0.3)'}`,
+                      color: filter === 'all' ? '#e8b820' : undefined,
+                    }}
+                  >
+                    全て
+                  </button>
+                  {usedTypes.map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setFilter(type)}
+                      className="dq-text text-[10px] px-2 py-0.5 rounded-sm whitespace-nowrap flex items-center gap-1"
+                      style={{
+                        background: filter === type ? 'rgba(212,160,23,0.2)' : 'rgba(0,0,0,0.2)',
+                        border: `1px solid ${filter === type ? '#d4a017' : 'rgba(92,74,46,0.3)'}`,
+                        color: filter === type ? '#e8b820' : undefined,
+                      }}
+                    >
+                      {typeIcons[type]} {typeLabels[type]}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           {/* 一覧 */}
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -332,7 +393,7 @@ export default function AnnotationList() {
               </div>
             ))}
             {filtered.length === 0 && (
-              <p className="dq-text text-xs text-center py-4 opacity-50">該当なし</p>
+              <p className="dq-text text-xs text-center py-4 opacity-50">条件に合うアノテーションがありません</p>
             )}
           </div>
 
