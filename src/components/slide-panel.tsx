@@ -15,10 +15,21 @@ type PanelSize = 'minimized' | 'compact' | 'expanded';
 
 export default function SlidePanel({ isOpen, onClose, title, children, allowInteraction = false }: SlidePanelProps) {
   const [visible, setVisible] = useState(false);
-  const [translateY, setTranslateY] = useState(100);
+  const [translateOffset, setTranslateOffset] = useState(100);
   const [panelSize, setPanelSize] = useState<PanelSize>(allowInteraction ? 'compact' : 'expanded');
   const dragStartY = useRef(0);
   const currentY = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [isDesktopDock, setIsDesktopDock] = useState(false);
+
+  useEffect(() => {
+    if (!allowInteraction) return;
+    const mediaQuery = window.matchMedia('(min-width: 1280px)');
+    const sync = () => setIsDesktopDock(mediaQuery.matches);
+    sync();
+    mediaQuery.addEventListener('change', sync);
+    return () => mediaQuery.removeEventListener('change', sync);
+  }, [allowInteraction]);
 
   // isOpen変化を前回値と比較して処理
   const prevOpenRef = useRef(isOpen);
@@ -26,9 +37,9 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
     if (isOpen && !prevOpenRef.current) {
       setVisible(true); // eslint-disable-line react-hooks/set-state-in-effect -- slide animation requires visibility toggle
       setPanelSize(allowInteraction ? 'compact' : 'expanded');
-      requestAnimationFrame(() => setTranslateY(0));
+      requestAnimationFrame(() => setTranslateOffset(0));
     } else if (!isOpen && prevOpenRef.current) {
-      setTranslateY(100);
+      setTranslateOffset(100);
       const timer = setTimeout(() => setVisible(false), 300);
       prevOpenRef.current = isOpen;
       return () => clearTimeout(timer);
@@ -52,7 +63,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
   // Focus trap for modal mode
   useEffect(() => {
     if (!isOpen || allowInteraction) return;
-    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    const dialog = panelRef.current;
     if (!dialog) return;
 
     const focusableEls = dialog.querySelectorAll<HTMLElement>(
@@ -89,7 +100,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
   const handleDragMove = (e: React.TouchEvent) => {
     currentY.current = e.touches[0].clientY - dragStartY.current;
     if (currentY.current > 0) {
-      setTranslateY((currentY.current / window.innerHeight) * 100);
+      setTranslateOffset((currentY.current / window.innerHeight) * 100);
     }
   };
 
@@ -97,7 +108,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
     if (currentY.current > 100) {
       onClose();
     } else {
-      setTranslateY(0);
+      setTranslateOffset(0);
     }
     currentY.current = 0;
   };
@@ -105,44 +116,65 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
   // ハンドルタップでサイズ切り替え
   const handleToggleSize = useCallback(() => {
     setPanelSize((prev) => {
+      if (isDesktopDock) {
+        return prev === 'compact' ? 'expanded' : 'compact';
+      }
       if (prev === 'minimized') return 'compact';
       if (prev === 'compact') return 'expanded';
       return 'compact';
     });
-  }, []);
+  }, [isDesktopDock]);
 
   const maxHeight = panelSize === 'minimized' ? '56px' : panelSize === 'compact' ? '40vh' : '70vh';
   const contentMaxHeight = panelSize === 'minimized' ? '0px' : panelSize === 'compact' ? '28vh' : '55vh';
+  const shouldUseDesktopDock = allowInteraction && isDesktopDock;
+  const desktopWidth = panelSize === 'expanded' ? 'min(27rem, calc(100vw - 2rem))' : 'min(22rem, calc(100vw - 2rem))';
+  const panelTransform = shouldUseDesktopDock
+    ? `translateX(${translateOffset}%)`
+    : `translateY(${translateOffset}%)`;
+  const toggleLabel = shouldUseDesktopDock
+    ? panelSize === 'expanded' ? '細くする' : '広げる'
+    : panelSize === 'expanded' ? '低くする' : panelSize === 'compact' ? 'さらに広げる' : '開く';
 
   if (!visible) return null;
 
   return (
     <div
-      className={allowInteraction ? "fixed left-0 right-0 z-[55] flex items-end" : "fixed inset-0 z-[55] flex items-end"}
-      style={{ pointerEvents: allowInteraction ? 'none' : 'auto', bottom: allowInteraction ? '56px' : 0 }}
+      className={shouldUseDesktopDock ? 'fixed inset-0 z-[55]' : allowInteraction ? 'fixed left-0 right-0 z-[55] flex items-end' : 'fixed inset-0 z-[55] flex items-end'}
+      style={{
+        pointerEvents: allowInteraction ? 'none' : 'auto',
+        bottom: allowInteraction && !shouldUseDesktopDock ? 'calc(env(safe-area-inset-bottom, 0px) + 4.75rem)' : 0,
+      }}
     >
       {!allowInteraction && (
         <div
           className="absolute inset-0 dq-overlay transition-opacity duration-300"
           style={{
-            opacity: translateY === 0 ? 1 : 0.5,
+            opacity: translateOffset === 0 ? 1 : 0.5,
             background: 'rgba(5, 4, 2, 0.85)',
           }}
           onClick={onClose}
         />
       )}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal={!allowInteraction}
         aria-label={title}
-        className="relative w-full dq-window rounded-t-md rounded-b-none dq-panel-smooth ynk-dungeon-wall"
+        className={`relative dq-window dq-panel-smooth ynk-dungeon-wall ${shouldUseDesktopDock ? 'ml-auto rounded-[18px]' : 'w-full rounded-t-md rounded-b-none'}`}
         style={{
-          maxHeight,
-          transform: `translateY(${translateY}%)`,
+          maxHeight: shouldUseDesktopDock ? 'none' : maxHeight,
+          width: shouldUseDesktopDock ? desktopWidth : '100%',
+          height: shouldUseDesktopDock ? 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 10rem)' : undefined,
+          transform: panelTransform,
           background: 'linear-gradient(180deg, #3b2a1a 0%, #2a1e12 50%, #1e1508 100%)',
           borderColor: '#5c4a2e',
           pointerEvents: 'auto',
-          transition: 'max-height 0.25s ease',
+          transition: shouldUseDesktopDock ? 'width 0.25s ease, transform 0.25s ease' : 'max-height 0.25s ease, transform 0.25s ease',
+          boxShadow: shouldUseDesktopDock ? '0 16px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(92,74,46,0.18)' : undefined,
+          position: shouldUseDesktopDock ? 'absolute' : 'relative',
+          right: shouldUseDesktopDock ? '12px' : undefined,
+          top: shouldUseDesktopDock ? 'calc(env(safe-area-inset-top, 0px) + 4.5rem)' : undefined,
         }}
       >
         {/* 石のアーチ装飾 */}
@@ -162,7 +194,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
               )
             `,
             borderBottom: '2px solid #2a2a2a',
-            borderRadius: '4px 4px 0 0',
+            borderRadius: shouldUseDesktopDock ? '18px 18px 0 0' : '4px 4px 0 0',
             pointerEvents: 'none',
             boxShadow: 'inset 0 1px 0 rgba(107,107,107,0.3), 0 2px 4px rgba(0,0,0,0.3)',
           }}
@@ -170,32 +202,76 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
 
         {/* ドラッグハンドル + サイズ切り替え */}
         <div
-          className="flex justify-center items-center pt-3 pb-1 cursor-grab"
-          onTouchStart={handleDragStart}
-          onTouchMove={handleDragMove}
-          onTouchEnd={handleDragEnd}
+          className={`flex items-center pt-3 pb-1 ${shouldUseDesktopDock ? 'justify-between px-3' : 'justify-center cursor-grab'}`}
+          onTouchStart={shouldUseDesktopDock ? undefined : handleDragStart}
+          onTouchMove={shouldUseDesktopDock ? undefined : handleDragMove}
+          onTouchEnd={shouldUseDesktopDock ? undefined : handleDragEnd}
           onClick={handleToggleSize}
         >
-          <div className="flex flex-col items-center gap-0.5">
-            <div
-              style={{
-                width: 60,
-                height: 6,
-                borderRadius: 3,
-                background: 'linear-gradient(180deg, #8b8b8b 0%, #5a5a5a 40%, #3a3a3a 100%)',
-                border: '1px solid #6b6b6b',
-                boxShadow: '0 1px 0 #1a1a1a, inset 0 1px 0 rgba(180,180,180,0.3)',
-              }}
-            />
-            {/* サイズインジケーター */}
-            <span style={{ fontSize: 8, color: '#8b6914', lineHeight: 1 }}>
-              {panelSize === 'minimized' ? '▲' : panelSize === 'compact' ? '▲▼' : '▼'}
-            </span>
-          </div>
+          {shouldUseDesktopDock ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div
+                  style={{
+                    width: 30,
+                    height: 6,
+                    borderRadius: 3,
+                    background: 'linear-gradient(180deg, #8b8b8b 0%, #5a5a5a 40%, #3a3a3a 100%)',
+                    border: '1px solid #6b6b6b',
+                    boxShadow: '0 1px 0 #1a1a1a, inset 0 1px 0 rgba(180,180,180,0.3)',
+                  }}
+                />
+                <span
+                  className="dq-text text-[10px]"
+                  style={{
+                    color: 'var(--ynk-gold)',
+                    background: 'rgba(212,160,23,0.1)',
+                    border: '1px solid rgba(212,160,23,0.28)',
+                    borderRadius: 999,
+                    padding: '2px 8px',
+                  }}
+                >
+                  PDFを触りながら編集
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleSize();
+                }}
+                className="dq-btn-small px-2 py-1 text-[10px]"
+                aria-label={toggleLabel}
+              >
+                {toggleLabel}
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-0.5">
+              <div
+                style={{
+                  width: 60,
+                  height: 6,
+                  borderRadius: 3,
+                  background: 'linear-gradient(180deg, #8b8b8b 0%, #5a5a5a 40%, #3a3a3a 100%)',
+                  border: '1px solid #6b6b6b',
+                  boxShadow: '0 1px 0 #1a1a1a, inset 0 1px 0 rgba(180,180,180,0.3)',
+                }}
+              />
+              <span style={{ fontSize: 8, color: '#8b6914', lineHeight: 1 }}>
+                {panelSize === 'minimized' ? '▲' : panelSize === 'compact' ? '▲▼' : '▼'}
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="px-3 pb-1 flex items-center justify-between">
-          <h3 className="dq-title text-sm">{title}</h3>
+        <div className={`px-3 pb-2 flex items-start justify-between gap-3 ${shouldUseDesktopDock ? 'border-b' : ''}`} style={shouldUseDesktopDock ? { borderColor: 'rgba(92,74,46,0.35)' } : undefined}>
+          <div className="min-w-0">
+            <h3 className="dq-title text-sm">{title}</h3>
+            <p className="dq-text text-[10px] mt-1 opacity-65">
+              {allowInteraction ? 'キャンバスを見ながらそのまま調整できます' : '保存前の設定をここでまとめて確認します'}
+            </p>
+          </div>
           <button
             onClick={onClose}
             style={{
@@ -212,6 +288,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
               textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
               boxShadow: '2px 0 0 0 #2a1c12, 0 2px 0 0 #2a1c12, 2px 2px 0 0 #2a1c12, -1px 0 0 0 #7a5540, 0 -1px 0 0 #7a5540',
               cursor: 'pointer',
+              flexShrink: 0,
             }}
             aria-label="閉じる"
           >
@@ -221,7 +298,8 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
         <div
           className="px-3 overflow-y-auto"
           style={{
-            maxHeight: contentMaxHeight,
+            maxHeight: shouldUseDesktopDock ? 'none' : contentMaxHeight,
+            height: shouldUseDesktopDock ? 'calc(100% - 6.5rem)' : undefined,
             paddingBottom: panelSize === 'minimized' ? 0 : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
             transition: 'max-height 0.25s ease',
             overflow: panelSize === 'minimized' ? 'hidden' : 'auto',
