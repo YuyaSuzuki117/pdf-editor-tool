@@ -18,6 +18,7 @@ import { parsePageRange } from '@/lib/page-range';
 import { deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
 import { rotatePageWithAnnotations } from '@/lib/page-rotation';
 import { dqConfirm } from '@/components/dq-confirm';
+import { uiEvents } from '@/lib/ui-events';
 
 interface PageThumb {
   index: number;
@@ -73,6 +74,22 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
   useEffect(() => {
     if (isOpen) generateThumbnails();
   }, [isOpen, generateThumbnails]);
+
+  useEffect(() => {
+    const openPages = () => setTab('pages');
+    const openMerge = () => setTab('merge');
+    const openSplit = () => setTab('split');
+
+    window.addEventListener(uiEvents.openPageManager, openPages);
+    window.addEventListener(uiEvents.openPageManagerMerge, openMerge);
+    window.addEventListener(uiEvents.openPageManagerSplit, openSplit);
+
+    return () => {
+      window.removeEventListener(uiEvents.openPageManager, openPages);
+      window.removeEventListener(uiEvents.openPageManagerMerge, openMerge);
+      window.removeEventListener(uiEvents.openPageManagerSplit, openSplit);
+    };
+  }, []);
 
   const handleRotate = async (pageIndex: number) => {
     if (!state.pdfData) return;

@@ -16,12 +16,15 @@ import SlidePanel from './slide-panel';
 import { YuunamaMushroomMan } from '@/components/dq-characters';
 import type { TextStyle, DrawStyle, HighlightStyle, ShapeStyle, Annotation } from '@/types/pdf';
 
+type SavePreset = 'pdf' | 'pdf-json' | 'image';
+
 export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [filename, setFilename] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [lastPreset, setLastPreset] = useState<SavePreset>('pdf');
 
   // ウォーターマーク設定
   const [showWatermark, setShowWatermark] = useState(false);
@@ -46,10 +49,32 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   }, [isOpen, state.file?.name]);
 
-  const getFilename = () => {
-    const base = filename.trim() || 'document';
-    return `${base}.pdf`;
-  };
+  const getBaseFilename = useCallback(() => filename.trim() || 'document', [filename]);
+
+  const getFilename = useCallback(() => `${getBaseFilename()}.pdf`, [getBaseFilename]);
+
+  const exportAnnotationsJson = useCallback(() => {
+    const data = {
+      fileName: state.file?.name || 'unknown',
+      exportedAt: new Date().toISOString(),
+      annotations: state.annotations.map(ann => ({
+        type: ann.type,
+        page: ann.page,
+        position: ann.position,
+        content: ann.type === 'image' ? '[画像データ]' : ann.content,
+        style: ann.style,
+        renderScale: ann.renderScale,
+        createdAt: new Date(ann.createdAt).toISOString(),
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `annotations_${getBaseFilename()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [getBaseFilename, state.annotations, state.file?.name]);
 
   const applyAnnotations = useCallback(async (): Promise<Uint8Array> => {
     if (!state.pdfData) throw new Error('PDFデータがありません');
@@ -160,7 +185,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     return applyAllAnnotations(state.pdfData, batch, setSaveProgress);
   }, [state.pdfData, state.annotations]);
 
-  const handleSavePDF = async () => {
+  const handleSavePDF = async (options?: { exportJsonAfter?: boolean; keepOpen?: boolean; preset?: SavePreset; successMessage?: string }) => {
     setSaving(true);
     setSaveProgress(0);
     try {
@@ -182,9 +207,15 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
 
       const blob = savePdfAsBlob(pdfBytes);
       downloadBlob(blob, getFilename());
+      if (options?.exportJsonAfter && state.annotations.length > 0) {
+        exportAnnotationsJson();
+      }
       dispatch({ type: 'SET_MODIFIED', payload: false });
-      showDqToast('PDFを保存しました！', 'success');
-      onClose();
+      setLastPreset(options?.preset || 'pdf');
+      showDqToast(options?.successMessage || 'PDFを保存しました！', 'success');
+      if (!options?.keepOpen) {
+        onClose();
+      }
     } catch (err) {
       showDqToast('保存に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'), 'error');
     } finally {
@@ -334,8 +365,9 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       const dataURL = outCanvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = dataURL;
-      a.download = `${filename.trim() || 'page'}_${state.currentPage}.png`;
+      a.download = `${getBaseFilename()}_${state.currentPage}.png`;
       a.click();
+      setLastPreset('image');
       showDqToast('画像を保存しました！', 'success');
       onClose();
     } finally {
@@ -426,6 +458,68 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           </div>
         )}
 
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>おすすめ保存</p>
+            <p className="dq-text text-[11px]" style={{ color: 'var(--ynk-bone)', opacity: 0.66 }}>
+              迷ったら左から使えば十分です
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <button
+              onClick={() => handleSavePDF({ preset: 'pdf' })}
+              disabled={saving}
+              className="text-left px-3 py-3 transition-all"
+              style={{
+                background: lastPreset === 'pdf' ? 'linear-gradient(180deg, rgba(212,160,23,0.18) 0%, rgba(212,160,23,0.08) 100%)' : 'rgba(0,0,0,0.22)',
+                border: lastPreset === 'pdf' ? '2px solid rgba(212,160,23,0.8)' : '2px solid rgba(92,74,46,0.35)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <FileDown size={16} style={{ color: 'var(--ynk-gold)' }} />
+                <span className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>通常PDF</span>
+              </div>
+              <p className="dq-text text-xs mt-2" style={{ color: 'var(--ynk-bone)', opacity: 0.76 }}>
+                編集内容を反映して、そのまま配布できます
+              </p>
+            </button>
+            <button
+              onClick={() => handleSavePDF({ exportJsonAfter: true, preset: 'pdf-json', successMessage: 'PDFとJSONを保存しました！' })}
+              disabled={saving}
+              className="text-left px-3 py-3 transition-all"
+              style={{
+                background: lastPreset === 'pdf-json' ? 'linear-gradient(180deg, rgba(212,160,23,0.18) 0%, rgba(212,160,23,0.08) 100%)' : 'rgba(0,0,0,0.22)',
+                border: lastPreset === 'pdf-json' ? '2px solid rgba(212,160,23,0.8)' : '2px solid rgba(92,74,46,0.35)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <FileJson size={16} style={{ color: 'var(--ynk-gold)' }} />
+                <span className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>PDF + JSON</span>
+              </div>
+              <p className="dq-text text-xs mt-2" style={{ color: 'var(--ynk-bone)', opacity: 0.76 }}>
+                証跡や引き継ぎ用に、注釈の控えも一緒に残します
+              </p>
+            </button>
+            <button
+              onClick={handleSaveImage}
+              disabled={saving}
+              className="text-left px-3 py-3 transition-all"
+              style={{
+                background: lastPreset === 'image' ? 'linear-gradient(180deg, rgba(212,160,23,0.18) 0%, rgba(212,160,23,0.08) 100%)' : 'rgba(0,0,0,0.22)',
+                border: lastPreset === 'image' ? '2px solid rgba(212,160,23,0.8)' : '2px solid rgba(92,74,46,0.35)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <ImageIcon size={16} style={{ color: 'var(--ynk-gold)' }} />
+                <span className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>現在ページPNG</span>
+              </div>
+              <p className="dq-text text-xs mt-2" style={{ color: 'var(--ynk-bone)', opacity: 0.76 }}>
+                チャット共有や報告用に、今見ているページを画像化します
+              </p>
+            </button>
+          </div>
+        </div>
+
         <div>
           <label htmlFor="save-filename" className="dq-text text-sm block mb-1" style={{ color: 'var(--ynk-gold)' }}>ファイル名</label>
           <input id="save-filename" value={filename} onChange={(e) => setFilename(e.target.value)} placeholder={state.file?.name?.replace('.pdf', '') || 'document'} className="dq-input w-full" />
@@ -451,7 +545,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
 
         <div className="space-y-2">
           <button
-            onClick={handleSavePDF}
+            onClick={() => handleSavePDF()}
             disabled={saving}
             className="dq-btn w-full flex items-center justify-center gap-2"
           >
@@ -552,6 +646,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
                       position: ann.position,
                       content: ann.type === 'image' ? '[画像データ]' : ann.content,
                       style: ann.style,
+                      renderScale: ann.renderScale,
                       createdAt: new Date(ann.createdAt).toISOString(),
                     })),
                   };
@@ -559,7 +654,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = `annotations_${filename.trim() || 'doc'}.json`;
+                  a.download = `annotations_${getBaseFilename()}.json`;
                   a.click();
                   URL.revokeObjectURL(url);
                   showDqToast('アノテーションをJSONで保存しました', 'success');

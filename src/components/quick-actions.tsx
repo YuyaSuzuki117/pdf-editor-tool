@@ -220,7 +220,36 @@ export default function QuickActions() {
         keywords: 'page manager reorder rotate split merge ページ 管理',
         available: hasPdf,
         icon: <FileText size={16} />,
-        run: () => dispatch({ type: 'SET_TOOL', payload: 'pages' }),
+        run: () => {
+          dispatch({ type: 'SET_TOOL', payload: 'pages' });
+          emitUiEvent(uiEvents.openPageManager);
+        },
+      },
+      {
+        id: 'page-manager-merge',
+        label: 'PDFを結合',
+        detail: '結合タブへ直接入る',
+        group: 'ナビ',
+        keywords: 'merge combine pdf 結合 まとめる',
+        available: hasPdf,
+        icon: <Layers3 size={16} />,
+        run: () => {
+          dispatch({ type: 'SET_TOOL', payload: 'pages' });
+          emitUiEvent(uiEvents.openPageManagerMerge);
+        },
+      },
+      {
+        id: 'page-manager-split',
+        label: 'ページを抽出',
+        detail: '分割タブへ直接入る',
+        group: 'ナビ',
+        keywords: 'split extract pages 抽出 分割',
+        available: hasPdf,
+        icon: <FileText size={16} />,
+        run: () => {
+          dispatch({ type: 'SET_TOOL', payload: 'pages' });
+          emitUiEvent(uiEvents.openPageManagerSplit);
+        },
       },
       {
         id: 'annotation-list',
