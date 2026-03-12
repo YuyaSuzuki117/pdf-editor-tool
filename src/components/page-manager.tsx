@@ -18,6 +18,7 @@ import { parsePageRange } from '@/lib/page-range';
 import { deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
 import { rotatePageWithAnnotations } from '@/lib/page-rotation';
 import { dqConfirm } from '@/components/dq-confirm';
+import SlidePanel from '@/components/slide-panel';
 import { uiEvents } from '@/lib/ui-events';
 
 interface PageThumb {
@@ -289,44 +290,71 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     showDqToast(`ページ${sourceIndex + 1}を${targetIndex + 1}番目へ移動しました`, 'success');
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--background)' }}>
-      {/* ヘッダー */}
-      <div
-        className="dq-window flex items-center justify-between px-4 py-3"
-        style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', flexShrink: 0 }}
-      >
-        <h2 className="dq-title text-lg">ページ管理</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>{state.numPages}p</span>
-          <button onClick={onClose} className="dq-close-btn" style={{ background: 'linear-gradient(180deg, #4a4a4a 0%, #333 100%)', border: '2px solid #7a5540', borderRadius: '50%', color: '#d4a017', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }} aria-label="ページ管理を閉じる">
-            <X size={20} />
-          </button>
+    <SlidePanel
+      isOpen={isOpen}
+      onClose={onClose}
+      title="ページ管理"
+      allowInteraction
+      desktopDock
+      desktopCompactWidth="min(25rem, calc(100vw - 2rem))"
+      desktopExpandedWidth="min(34rem, calc(100vw - 2rem))"
+      description="並べ替え、結合、分割をPDFを見ながら進められます"
+    >
+      <div className="space-y-4">
+        <div
+          className="rounded-md border px-3 py-3"
+          style={{
+            background: 'rgba(0,0,0,0.18)',
+            borderColor: 'rgba(92,74,46,0.45)',
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
+                {state.file?.name || '現在のPDF'}
+              </p>
+              <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.72 }}>
+                {state.numPages}ページ / 現在ページ {state.currentPage}
+              </p>
+            </div>
+            <span
+              className="dq-text rounded-full px-2 py-1 text-[10px]"
+              style={{
+                background: 'rgba(212,160,23,0.12)',
+                border: '1px solid rgba(212,160,23,0.3)',
+                color: 'var(--ynk-gold)',
+              }}
+            >
+              管理モード
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* タブ */}
-      <div className="flex gap-1 px-3 py-2" style={{ background: 'rgba(0,0,0,0.3)' }}>
-        {([['pages', 'ページ'], ['merge', '結合'], ['split', '分割']] as [TabMode, string][]).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className="dq-btn-small flex-1 text-center min-h-[36px]"
-            style={tab === key
-              ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
-              : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        <div
+          className="sticky top-0 z-10 flex gap-1 rounded-md px-2 py-2 backdrop-blur-sm"
+          style={{
+            background: 'linear-gradient(180deg, rgba(42,30,18,0.96) 0%, rgba(30,21,8,0.9) 100%)',
+            border: '1px solid rgba(92,74,46,0.45)',
+          }}
+        >
+          {([['pages', 'ページ'], ['merge', '結合'], ['split', '分割']] as [TabMode, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className="dq-btn-small flex-1 text-center min-h-[36px]"
+              style={tab === key
+                ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.5)' }
+                : { background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {/* 結合タブ */}
-      {tab === 'merge' && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {tab === 'merge' && (
+          <div className="space-y-4">
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-sm">複数のPDFファイルを1つに結合します</p>
           </div>
@@ -353,12 +381,11 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
               </button>
             </div>
           )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* 分割タブ */}
-      {tab === 'split' && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {tab === 'split' && (
+          <div className="space-y-4">
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--window-border)', borderRadius: 4, padding: '12px 16px' }}>
             <p className="dq-text text-sm">ページ番号を指定してPDFを分割・抽出します</p>
             <p className="dq-text text-xs mt-1" style={{ opacity: 0.7 }}>例: 1-3, 5, 7-10</p>
@@ -376,13 +403,12 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
           <button onClick={handleSplit} disabled={!splitRange.trim()} className="dq-btn w-full flex items-center justify-center gap-2">
             <Scissors size={18} /> 抽出して保存
           </button>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* ページタブ - サムネイルグリッド */}
-      {tab === 'pages' && <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+        {tab === 'pages' && <div className="space-y-4">
         <div
-          className="mb-4 flex flex-col gap-2 rounded-md border px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-md border px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
           style={{
             background: 'rgba(0,0,0,0.18)',
             borderColor: isReordering ? 'rgba(212,160,23,0.55)' : 'rgba(92,74,46,0.4)',
@@ -577,7 +603,8 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
             })}
           </div>
         )}
-      </div>}
-    </div>
+        </div>}
+      </div>
+    </SlidePanel>
   );
 }

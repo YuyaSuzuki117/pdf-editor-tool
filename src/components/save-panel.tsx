@@ -429,7 +429,16 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   }, [state.annotations]);
 
   return (
-    <SlidePanel isOpen={isOpen} onClose={onClose} title="保存・書き出し">
+    <SlidePanel
+      isOpen={isOpen}
+      onClose={onClose}
+      title="保存・書き出し"
+      allowInteraction
+      desktopDock
+      desktopCompactWidth="min(24rem, calc(100vw - 2rem))"
+      desktopExpandedWidth="min(30rem, calc(100vw - 2rem))"
+      description="保存形式を見比べながら、そのまま書き出せます"
+    >
       <div className="space-y-4">
         {state.annotations.length > 0 ? (
           <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid var(--ynk-gold)', borderRadius: 4, padding: '12px 16px' }}>

@@ -9,11 +9,25 @@ interface SlidePanelProps {
   children: React.ReactNode;
   /** trueならオーバーレイをクリック透過にしてPDFとのインタラクションを許可 */
   allowInteraction?: boolean;
+  description?: string;
+  desktopDock?: boolean;
+  desktopCompactWidth?: string;
+  desktopExpandedWidth?: string;
 }
 
 type PanelSize = 'minimized' | 'compact' | 'expanded';
 
-export default function SlidePanel({ isOpen, onClose, title, children, allowInteraction = false }: SlidePanelProps) {
+export default function SlidePanel({
+  isOpen,
+  onClose,
+  title,
+  children,
+  allowInteraction = false,
+  description,
+  desktopDock = false,
+  desktopCompactWidth = 'min(22rem, calc(100vw - 2rem))',
+  desktopExpandedWidth = 'min(27rem, calc(100vw - 2rem))',
+}: SlidePanelProps) {
   const [visible, setVisible] = useState(false);
   const [translateOffset, setTranslateOffset] = useState(100);
   const [panelSize, setPanelSize] = useState<PanelSize>(allowInteraction ? 'compact' : 'expanded');
@@ -127,8 +141,8 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
 
   const maxHeight = panelSize === 'minimized' ? '56px' : panelSize === 'compact' ? '40vh' : '70vh';
   const contentMaxHeight = panelSize === 'minimized' ? '0px' : panelSize === 'compact' ? '28vh' : '55vh';
-  const shouldUseDesktopDock = allowInteraction && isDesktopDock;
-  const desktopWidth = panelSize === 'expanded' ? 'min(27rem, calc(100vw - 2rem))' : 'min(22rem, calc(100vw - 2rem))';
+  const shouldUseDesktopDock = isDesktopDock && (allowInteraction || desktopDock);
+  const desktopWidth = panelSize === 'expanded' ? desktopExpandedWidth : desktopCompactWidth;
   const panelTransform = shouldUseDesktopDock
     ? `translateX(${translateOffset}%)`
     : `translateY(${translateOffset}%)`;
@@ -269,7 +283,7 @@ export default function SlidePanel({ isOpen, onClose, title, children, allowInte
           <div className="min-w-0">
             <h3 className="dq-title text-sm">{title}</h3>
             <p className="dq-text text-[10px] mt-1 opacity-65">
-              {allowInteraction ? 'キャンバスを見ながらそのまま調整できます' : '保存前の設定をここでまとめて確認します'}
+              {description || (allowInteraction ? 'キャンバスを見ながらそのまま調整できます' : '保存前の設定をここでまとめて確認します')}
             </p>
           </div>
           <button
