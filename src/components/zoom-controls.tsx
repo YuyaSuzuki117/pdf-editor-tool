@@ -3,9 +3,9 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { getPageText } from '@/lib/pdf-engine';
-import { rotatePage } from '@/lib/pdf-editor';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { showDqToast } from '@/lib/toast';
+import { rotatePageWithAnnotations } from '@/lib/page-rotation';
 import { uiEvents } from '@/lib/ui-events';
 
 const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
@@ -53,16 +53,29 @@ const ZoomControls = React.memo(function ZoomControls() {
   const handleRotate = useCallback(async () => {
     if (!state.pdfData) return;
     try {
-      const newBytes = await rotatePage(state.pdfData, state.currentPage - 1);
+      const { annotations, pdfData } = await rotatePageWithAnnotations(
+        state.pdfData,
+        state.currentPage - 1,
+        state.annotations,
+      );
       dispatch({
         type: 'UPDATE_PDF_DATA',
-        payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: state.numPages },
+        payload: {
+          pdfData,
+          numPages: state.numPages,
+          annotations,
+        },
       });
-      showDqToast('ページを回転しました', 'success');
+      showDqToast(
+        state.annotations.some((annotation) => annotation.page === state.currentPage)
+          ? 'ページとアノテーションを一緒に回転しました'
+          : 'ページを回転しました',
+        'success',
+      );
     } catch {
       showDqToast('回転に失敗しました', 'error');
     }
-  }, [state.pdfData, state.currentPage, state.numPages, dispatch]);
+  }, [state.annotations, state.currentPage, state.numPages, state.pdfData, dispatch]);
 
   // R キーで回転イベントを受信
   useEffect(() => {

@@ -323,6 +323,104 @@ export interface BatchAnnotation {
   };
 }
 
+function roundCoordinate(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function normalizePageRotation(angle: number): 0 | 90 | 180 | 270 {
+  const normalized = ((angle % 360) + 360) % 360;
+  if (normalized === 90 || normalized === 180 || normalized === 270) {
+    return normalized;
+  }
+  return 0;
+}
+
+function inverseRotateViewportPoint(
+  point: { x: number; y: number },
+  pageSize: { width: number; height: number },
+  rotation: 0 | 90 | 180 | 270,
+): { x: number; y: number } {
+  switch (rotation) {
+    case 90:
+      return { x: roundCoordinate(point.y), y: roundCoordinate(pageSize.height - point.x) };
+    case 180:
+      return { x: roundCoordinate(pageSize.width - point.x), y: roundCoordinate(pageSize.height - point.y) };
+    case 270:
+      return { x: roundCoordinate(pageSize.width - point.y), y: roundCoordinate(point.x) };
+    default:
+      return point;
+  }
+}
+
+function inverseRotateViewportBox(
+  position: { x: number; y: number },
+  size: { width: number; height: number },
+  pageSize: { width: number; height: number },
+  rotation: 0 | 90 | 180 | 270,
+): { position: { x: number; y: number }; size: { width: number; height: number } } {
+  if (rotation === 0) return { position, size };
+
+  const corners = [
+    { x: position.x, y: position.y },
+    { x: position.x + size.width, y: position.y },
+    { x: position.x, y: position.y + size.height },
+    { x: position.x + size.width, y: position.y + size.height },
+  ].map((point) => inverseRotateViewportPoint(point, pageSize, rotation));
+
+  const xs = corners.map((point) => point.x);
+  const ys = corners.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+
+  return {
+    position: { x: minX, y: minY },
+    size: { width: roundCoordinate(maxX - minX), height: roundCoordinate(maxY - minY) },
+  };
+}
+
+function inverseRotateViewportPath(
+  content: string,
+  pageSize: { width: number; height: number },
+  rotation: 0 | 90 | 180 | 270,
+): string {
+  if (rotation === 0) return content;
+
+  const segments = Array.from(content.matchAll(/([ML])([\d.]+),([\d.]+)/g));
+  if (segments.length === 0) return content;
+
+  return segments
+    .map(([, command, x, y]) => {
+      const rotated = inverseRotateViewportPoint(
+        { x: parseFloat(x), y: parseFloat(y) },
+        pageSize,
+        rotation,
+      );
+      return `${command}${rotated.x},${rotated.y}`;
+    })
+    .join('');
+}
+
+function inverseRotateViewportShapeData(
+  shapeData: NonNullable<BatchAnnotation['shapeData']>,
+  pageSize: { width: number; height: number },
+  rotation: 0 | 90 | 180 | 270,
+): NonNullable<BatchAnnotation['shapeData']> {
+  if (rotation === 0) return shapeData;
+
+  const start = inverseRotateViewportPoint({ x: shapeData.x1, y: shapeData.y1 }, pageSize, rotation);
+  const end = inverseRotateViewportPoint({ x: shapeData.x2, y: shapeData.y2 }, pageSize, rotation);
+
+  return {
+    ...shapeData,
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+  };
+}
+
 export async function applyAllAnnotations(
   pdfBytes: ArrayBuffer,
   annotations: BatchAnnotation[],
@@ -357,7 +455,9 @@ export async function applyAllAnnotations(
     const ann = annotations[i];
     const page = pages[ann.pageIndex];
     if (!page) continue;
-    const { height } = page.getSize();
+    const pageSize = page.getSize();
+    const rotation = normalizePageRotation(page.getRotation().angle);
+    const { height } = pageSize;
 
     if (i > 0 && i % 10 === 0) {
       await new Promise<void>((r) => setTimeout(r, 0));
@@ -369,12 +469,13 @@ export async function applyAllAnnotations(
         const useJp = ann.fontFamily === 'Noto Sans JP' || !ann.fontFamily;
         const font = (useJp && jpFont) ? jpFont : defaultFont!;
         const fs = ann.fontSize || 16;
+        const position = inverseRotateViewportPoint(ann.position, pageSize, rotation);
         // 各行を描画（改行対応）
         const lines = ann.content.split('\n');
         for (let li = 0; li < lines.length; li++) {
           page.drawText(lines[li], {
-            x: ann.position.x,
-            y: height - ann.position.y - fs - (li * fs * 1.2),
+            x: position.x,
+            y: height - position.y - fs - (li * fs * 1.2),
             size: fs,
             font,
             color: hexToRgb(ann.color || '#000000', rgb),
@@ -383,7 +484,8 @@ export async function applyAllAnnotations(
         break;
       }
       case 'draw': {
-        const points = ann.content.split(/[ML]/).filter(Boolean).map((p) => {
+        const normalizedPath = inverseRotateViewportPath(ann.content, pageSize, rotation);
+        const points = normalizedPath.split(/[ML]/).filter(Boolean).map((p) => {
           const [x, y] = p.trim().split(',').map(Number);
           return { x, y: height - y };
         });
@@ -401,40 +503,48 @@ export async function applyAllAnnotations(
         const hW = ann.size?.width || 0;
         const hH = ann.size?.height || 0;
         const mode = ann.markupMode || 'highlight';
+        const highlightBox = inverseRotateViewportBox(
+          ann.position,
+          { width: hW, height: hH },
+          pageSize,
+          rotation,
+        );
+        const position = highlightBox.position;
+        const size = highlightBox.size;
 
         if (mode === 'redact') {
           page.drawRectangle({
-            x: ann.position.x,
-            y: height - ann.position.y - hH,
-            width: hW,
-            height: hH,
+            x: position.x,
+            y: height - position.y - size.height,
+            width: size.width,
+            height: size.height,
             color: hexToRgb('#000000', rgb),
             opacity: 1,
           });
         } else if (mode === 'underline') {
           page.drawRectangle({
-            x: ann.position.x,
-            y: height - ann.position.y - hH,
-            width: hW,
+            x: position.x,
+            y: height - position.y - size.height,
+            width: size.width,
             height: 3,
             color: hexToRgb(ann.color || '#ef4444', rgb),
             opacity: 1,
           });
         } else if (mode === 'strikethrough') {
           page.drawRectangle({
-            x: ann.position.x,
-            y: height - ann.position.y - hH / 2 - 1.5,
-            width: hW,
+            x: position.x,
+            y: height - position.y - size.height / 2 - 1.5,
+            width: size.width,
             height: 3,
             color: hexToRgb(ann.color || '#ef4444', rgb),
             opacity: 0.8,
           });
         } else {
           page.drawRectangle({
-            x: ann.position.x,
-            y: height - ann.position.y - hH,
-            width: hW,
-            height: hH,
+            x: position.x,
+            y: height - position.y - size.height,
+            width: size.width,
+            height: size.height,
             color: hexToRgb(ann.color || '#ffff00', rgb),
             opacity: ann.opacity ?? 0.35,
           });
@@ -449,17 +559,23 @@ export async function applyAllAnnotations(
         } catch {
           image = await doc.embedJpg(ann.imageBytes);
         }
+        const imageBox = inverseRotateViewportBox(
+          ann.position,
+          { width: ann.size?.width || 150, height: ann.size?.height || 150 },
+          pageSize,
+          rotation,
+        );
         page.drawImage(image, {
-          x: ann.position.x,
-          y: height - ann.position.y - (ann.size?.height || 0),
-          width: ann.size?.width || 150,
-          height: ann.size?.height || 150,
+          x: imageBox.position.x,
+          y: height - imageBox.position.y - imageBox.size.height,
+          width: imageBox.size.width,
+          height: imageBox.size.height,
         });
         break;
       }
       case 'shape': {
         if (!ann.shapeData) break;
-        const sd = ann.shapeData;
+        const sd = inverseRotateViewportShapeData(ann.shapeData, pageSize, rotation);
         const sx1 = sd.x1;
         const sy1 = height - sd.y1;
         const sx2 = sd.x2;

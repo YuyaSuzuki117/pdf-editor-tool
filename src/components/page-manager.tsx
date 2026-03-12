@@ -15,7 +15,8 @@ import {
   rebaseAnnotationsAfterReorder,
 } from '@/lib/annotation-page-ops';
 import { parsePageRange } from '@/lib/page-range';
-import { rotatePage, deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
+import { deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
+import { rotatePageWithAnnotations } from '@/lib/page-rotation';
 import { dqConfirm } from '@/components/dq-confirm';
 
 interface PageThumb {
@@ -75,14 +76,21 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
   const handleRotate = async (pageIndex: number) => {
     if (!state.pdfData) return;
-    const newBytes = await rotatePage(state.pdfData, pageIndex);
+    const { annotations, pdfData } = await rotatePageWithAnnotations(state.pdfData, pageIndex, state.annotations);
     dispatch({
       type: 'UPDATE_PDF_DATA',
-      payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: state.numPages },
+      payload: {
+        pdfData,
+        numPages: state.numPages,
+        annotations,
+      },
     });
-    if (state.annotations.some((annotation) => annotation.page === pageIndex + 1)) {
-      showDqToast('回転後はこのページのアノテーション位置を確認してください', 'info');
-    }
+    showDqToast(
+      state.annotations.some((annotation) => annotation.page === pageIndex + 1)
+        ? 'ページとアノテーションを一緒に回転しました'
+        : 'ページを回転しました',
+      'success',
+    );
     generateThumbnails();
   };
 

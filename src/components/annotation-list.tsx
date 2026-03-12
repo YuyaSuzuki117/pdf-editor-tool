@@ -6,6 +6,7 @@ import { showDqToast } from '@/lib/toast';
 import { usePDF } from '@/contexts/pdf-context';
 import type { AnnotationType } from '@/types/pdf';
 import { dqConfirm } from '@/components/dq-confirm';
+import { uiEvents } from '@/lib/ui-events';
 
 const typeIcons: Record<AnnotationType, React.ReactNode> = {
   text: <Type size={14} />,
@@ -57,6 +58,17 @@ export default function AnnotationList() {
       (overlay as HTMLElement).style.pointerEvents = annotationsVisible ? 'auto' : 'none';
     }
   }, [annotationsVisible, state.annotations]);
+
+  useEffect(() => {
+    const openHandler = () => setIsOpen(true);
+    const toggleHandler = () => setIsOpen((current) => !current);
+    window.addEventListener(uiEvents.openAnnotationList, openHandler);
+    window.addEventListener(uiEvents.toggleAnnotationList, toggleHandler);
+    return () => {
+      window.removeEventListener(uiEvents.openAnnotationList, openHandler);
+      window.removeEventListener(uiEvents.toggleAnnotationList, toggleHandler);
+    };
+  }, []);
 
   const handleExportJSON = useCallback(() => {
     const data = {

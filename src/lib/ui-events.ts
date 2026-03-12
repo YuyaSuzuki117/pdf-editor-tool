@@ -1,9 +1,11 @@
 export const uiEvents = {
   copyPageText: 'copy-page-text',
+  openAnnotationList: 'open-annotation-list',
   openPdfPicker: 'open-pdf-picker',
   openQuickActions: 'open-quick-actions',
   openSearchPanel: 'open-search-panel',
   openThumbnailStrip: 'open-thumbnail-strip',
+  toggleAnnotationList: 'toggle-annotation-list',
   toggleQuickActions: 'toggle-quick-actions',
   toggleSearchPanel: 'toggle-search-panel',
   toggleShortcutHelp: 'toggle-shortcut-help',

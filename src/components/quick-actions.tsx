@@ -1,19 +1,23 @@
 'use client';
 
 import {
+  Eye,
   FilePlus2,
   FileSearch,
   FileText,
   Highlighter,
   Keyboard,
   Layers3,
+  List,
   PencilLine,
   Printer,
+  Redo2,
   RotateCw,
   Save,
   Search,
   SquarePen,
   Stamp,
+  Undo2,
   WandSparkles,
   ZoomIn,
   ZoomOut,
@@ -23,6 +27,10 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { usePDF } from '@/contexts/pdf-context';
 import type { ToolMode } from '@/types/pdf';
 import { emitUiEvent, uiEvents } from '@/lib/ui-events';
+import { showDqToast } from '@/lib/toast';
+
+const RECENT_ACTIONS_KEY = 'pdf-editor.recent-quick-actions';
+const RECENT_ACTION_LIMIT = 6;
 
 interface ActionItem {
   available: boolean;
@@ -54,9 +62,20 @@ const toolActions: Array<{
 ];
 
 export default function QuickActions() {
-  const { state, dispatch } = usePDF();
+  const { state, dispatch, undoStackSize, redoStackSize } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [recentActionIds, setRecentActionIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = window.localStorage.getItem(RECENT_ACTIONS_KEY);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +164,34 @@ export default function QuickActions() {
         run: () => dispatch({ type: 'SET_TOOL', payload: 'save' }),
       },
       {
+        id: 'undo',
+        label: '元に戻す',
+        detail: '直前の変更を取り消す',
+        group: '編集',
+        keywords: 'undo revert 戻す 取り消し',
+        shortcut: 'Ctrl+Z',
+        available: undoStackSize > 0,
+        icon: <Undo2 size={16} />,
+        run: () => {
+          dispatch({ type: 'UNDO_ANNOTATION' });
+          showDqToast('ひとつ もどした！', 'info');
+        },
+      },
+      {
+        id: 'redo',
+        label: 'やり直す',
+        detail: '取り消した変更を戻す',
+        group: '編集',
+        keywords: 'redo やり直し 戻す',
+        shortcut: 'Ctrl+Shift+Z',
+        available: redoStackSize > 0,
+        icon: <Redo2 size={16} />,
+        run: () => {
+          dispatch({ type: 'REDO_ANNOTATION' });
+          showDqToast('やりなおした！', 'info');
+        },
+      },
+      {
         id: 'search',
         label: 'テキスト検索',
         detail: '本文を探す',
@@ -174,6 +221,16 @@ export default function QuickActions() {
         available: hasPdf,
         icon: <FileText size={16} />,
         run: () => dispatch({ type: 'SET_TOOL', payload: 'pages' }),
+      },
+      {
+        id: 'annotation-list',
+        label: 'アノテーション一覧',
+        detail: '注釈をまとめて確認する',
+        group: 'ナビ',
+        keywords: 'annotation list notes 注釈 一覧 管理',
+        available: state.annotations.length > 0,
+        icon: <List size={16} />,
+        run: () => emitUiEvent(uiEvents.toggleAnnotationList),
       },
       {
         id: 'previous-page',
@@ -282,6 +339,16 @@ export default function QuickActions() {
         run: () => emitUiEvent(uiEvents.copyPageText),
       },
       {
+        id: 'annotation-visibility',
+        label: '注釈一覧を開く',
+        detail: '追加した注釈を見失わない',
+        group: '便利',
+        keywords: 'annotation notes show list 注釈 表示 一覧',
+        available: state.annotations.length > 0,
+        icon: <Eye size={16} />,
+        run: () => emitUiEvent(uiEvents.openAnnotationList),
+      },
+      {
         id: 'shortcut-help',
         label: 'ショートカット一覧',
         detail: 'キーボード操作を確認',
@@ -293,22 +360,41 @@ export default function QuickActions() {
         run: () => emitUiEvent(uiEvents.toggleShortcutHelp),
       },
     ].filter((action) => action.available);
-  }, [dispatch, state.currentPage, state.numPages, state.pdfData, state.scale]);
+  }, [dispatch, redoStackSize, state.annotations.length, state.currentPage, state.numPages, state.pdfData, state.scale, undoStackSize]);
 
   const filteredActions = useMemo(() => {
-    if (!deferredQuery) return actions;
-    return actions.filter((action) => {
+    const filtered = !deferredQuery
+      ? actions
+      : actions.filter((action) => {
       const haystack = `${action.label} ${action.detail} ${action.group} ${action.keywords}`.toLowerCase();
       return haystack.includes(deferredQuery);
     });
-  }, [actions, deferredQuery]);
+    const recentIndex = new Map(recentActionIds.map((id, index) => [id, index]));
+
+    return filtered
+      .map((action, index) => ({ action, index, recentRank: recentIndex.get(action.id) ?? Number.POSITIVE_INFINITY }))
+      .sort((left, right) => {
+        if (left.recentRank !== right.recentRank) return left.recentRank - right.recentRank;
+        return left.index - right.index;
+      })
+      .map(({ action }) => action);
+  }, [actions, deferredQuery, recentActionIds]);
 
   const activeIndex = filteredActions.length === 0 ? -1 : Math.min(selectedIndex, filteredActions.length - 1);
 
+  const recordRecentAction = useCallback((actionId: string) => {
+    setRecentActionIds((current) => {
+      const next = [actionId, ...current.filter((id) => id !== actionId)].slice(0, RECENT_ACTION_LIMIT);
+      window.localStorage.setItem(RECENT_ACTIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const runAction = useCallback((action: ActionItem) => {
     closePalette();
+    recordRecentAction(action.id);
     window.setTimeout(() => action.run(), 20);
-  }, [closePalette]);
+  }, [closePalette, recordRecentAction]);
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
@@ -363,7 +449,7 @@ export default function QuickActions() {
             <div>
               <p className="dq-title text-lg">クイック操作</p>
               <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.78 }}>
-                よく使う操作をキーボードでも検索でも一発で呼べます
+                よく使う操作ほど上に寄るので、毎日の作業が速くなります
               </p>
             </div>
             <span
