@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getCurrentPageAfterDeleteMany,
   getPageNumberAfterReorder,
   rebaseAnnotationsAfterDelete,
+  rebaseAnnotationsAfterDeleteMany,
   rebaseAnnotationsAfterDuplicate,
   rebaseAnnotationsAfterInsertBlank,
   rebaseAnnotationsAfterReorder,
@@ -29,6 +31,26 @@ describe('annotation page operations', () => {
       makeAnnotation('a', 1),
       { ...makeAnnotation('c', 4), page: 3 },
     ]);
+  });
+
+  it('rebases annotations across multiple deleted pages in one pass', () => {
+    const annotations = [
+      makeAnnotation('a', 1),
+      makeAnnotation('b', 2),
+      makeAnnotation('c', 4),
+      makeAnnotation('d', 5),
+    ];
+
+    expect(rebaseAnnotationsAfterDeleteMany(annotations, [2, 4])).toEqual([
+      makeAnnotation('a', 1),
+      { ...makeAnnotation('d', 5), page: 3 },
+    ]);
+  });
+
+  it('keeps the viewer on the nearest surviving page after multi-delete', () => {
+    expect(getCurrentPageAfterDeleteMany(4, 6, [2, 4])).toBe(3);
+    expect(getCurrentPageAfterDeleteMany(2, 6, [2, 4])).toBe(2);
+    expect(getCurrentPageAfterDeleteMany(6, 6, [2, 4])).toBe(4);
   });
 
   it('shifts later annotations up after blank page insertion', () => {

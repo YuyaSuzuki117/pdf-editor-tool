@@ -30,6 +30,40 @@ export function rebaseAnnotationsAfterDelete(annotations: Annotation[], deletedP
     );
 }
 
+function normalizePageNumbers(pageNumbers: number[], totalPages?: number): number[] {
+  return [...new Set(pageNumbers)]
+    .filter((pageNumber) => Number.isInteger(pageNumber))
+    .filter((pageNumber) => pageNumber >= 1)
+    .filter((pageNumber) => totalPages === undefined || pageNumber <= totalPages)
+    .sort((left, right) => left - right);
+}
+
+export function rebaseAnnotationsAfterDeleteMany(annotations: Annotation[], deletedPages: number[]): Annotation[] {
+  return normalizePageNumbers(deletedPages)
+    .sort((left, right) => right - left)
+    .reduce(
+      (currentAnnotations, deletedPage) => rebaseAnnotationsAfterDelete(currentAnnotations, deletedPage),
+      annotations,
+    );
+}
+
+export function getCurrentPageAfterDeleteMany(currentPage: number, totalPages: number, deletedPages: number[]): number {
+  const normalizedDeletedPages = normalizePageNumbers(deletedPages, totalPages);
+  if (normalizedDeletedPages.length === 0) return currentPage;
+
+  const deletedSet = new Set(normalizedDeletedPages);
+  const remainingPages = Array.from({ length: totalPages }, (_, index) => index + 1)
+    .filter((pageNumber) => !deletedSet.has(pageNumber));
+
+  if (remainingPages.length === 0) return 1;
+
+  const fallbackOriginalPage =
+    remainingPages.find((pageNumber) => pageNumber >= currentPage)
+    ?? remainingPages[remainingPages.length - 1];
+
+  return remainingPages.indexOf(fallbackOriginalPage) + 1;
+}
+
 export function rebaseAnnotationsAfterInsertBlank(annotations: Annotation[], insertedPage: number): Annotation[] {
   return annotations.map((annotation) =>
     annotation.page >= insertedPage

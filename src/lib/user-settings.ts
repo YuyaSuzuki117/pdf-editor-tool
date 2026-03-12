@@ -22,6 +22,7 @@ export interface UserSettings {
   lastStampCustomText?: string;
   lastStampCustomColor?: string;
   lastStampWasCustom?: boolean;
+  lastSavePreset?: 'pdf' | 'pdf-json' | 'image';
   recentColors?: string[];
   savedSignatures?: string[]; // DataURL array
 }

@@ -135,12 +135,20 @@ export async function deletePage(
   pdfBytes: ArrayBuffer,
   pageIndex: number
 ): Promise<Uint8Array> {
+  return deletePages(pdfBytes, [pageIndex]);
+}
+
+export async function deletePages(
+  pdfBytes: ArrayBuffer,
+  pageIndices: number[]
+): Promise<Uint8Array> {
   const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
-  if (doc.getPageCount() <= 1) {
+  const uniquePageIndices = [...new Set(pageIndices)].sort((left, right) => right - left);
+  if (doc.getPageCount() - uniquePageIndices.length < 1) {
     throw new Error('最後のページは削除できません');
   }
-  doc.removePage(pageIndex);
+  uniquePageIndices.forEach((index) => doc.removePage(index));
   return doc.save();
 }
 

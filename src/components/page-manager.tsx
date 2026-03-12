@@ -2,20 +2,22 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus, Copy, FileText, Scissors, Merge, GripVertical } from 'lucide-react';
+import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus, Copy, FileText, Scissors, Merge, GripVertical, Check } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import { YuunamaLilith } from '@/components/dq-characters';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
 import {
+  getCurrentPageAfterDeleteMany,
   getPageNumberAfterReorder,
   rebaseAnnotationsAfterDelete,
+  rebaseAnnotationsAfterDeleteMany,
   rebaseAnnotationsAfterDuplicate,
   rebaseAnnotationsAfterInsertBlank,
   rebaseAnnotationsAfterReorder,
 } from '@/lib/annotation-page-ops';
 import { parsePageRange } from '@/lib/page-range';
-import { deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
+import { deletePages, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
 import { rotatePageWithAnnotations } from '@/lib/page-rotation';
 import { dqConfirm } from '@/components/dq-confirm';
 import SlidePanel from '@/components/slide-panel';
@@ -47,6 +49,8 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
   const [splitRange, setSplitRange] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPages, setSelectedPages] = useState<number[]>([]);
 
   const generateThumbnails = useCallback(async () => {
     if (!state.pdfData) return;
@@ -87,6 +91,15 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
   }, [isOpen, generateThumbnails]);
 
   useEffect(() => {
+    if (!isOpen) {
+      setSelectionMode(false);
+      setSelectedPages([]);
+      setDraggedIndex(null);
+      setDropIndex(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     const openPages = () => setTab('pages');
     const openMerge = () => setTab('merge');
     const openSplit = () => setTab('split');
@@ -101,6 +114,24 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
       window.removeEventListener(uiEvents.openPageManagerSplit, openSplit);
     };
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'pages') {
+      setSelectionMode(false);
+      setSelectedPages([]);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    setSelectedPages((prev) => prev.filter((pageNumber) => pageNumber <= state.numPages));
+  }, [state.numPages]);
+
+  useEffect(() => {
+    if (selectionMode) {
+      setDraggedIndex(null);
+      setDropIndex(null);
+    }
+  }, [selectionMode]);
 
   const commitReorder = useCallback(async (from: number, to: number) => {
     if (!state.pdfData || from === to) return;
@@ -130,6 +161,45 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     return reorderByMove(thumbnails, draggedIndex, dropIndex);
   }, [draggedIndex, dropIndex, thumbnails]);
 
+  const sortedSelectedPages = useMemo(
+    () => [...selectedPages].sort((left, right) => left - right),
+    [selectedPages],
+  );
+
+  const selectedPageSet = useMemo(
+    () => new Set(sortedSelectedPages),
+    [sortedSelectedPages],
+  );
+
+  const selectedPageLabel = useMemo(() => {
+    if (sortedSelectedPages.length === 0) return 'まだ選択されていません';
+    const preview = sortedSelectedPages.slice(0, 6).join(', ');
+    return sortedSelectedPages.length > 6 ? `${preview} ...` : preview;
+  }, [sortedSelectedPages]);
+
+  const toggleSelectionMode = useCallback(() => {
+    if (selectionMode) {
+      setSelectedPages([]);
+    }
+    setSelectionMode((prev) => !prev);
+  }, [selectionMode]);
+
+  const clearSelectedPages = useCallback(() => {
+    setSelectedPages([]);
+  }, []);
+
+  const toggleSelectedPage = useCallback((pageNumber: number) => {
+    setSelectedPages((prev) => (
+      prev.includes(pageNumber)
+        ? prev.filter((candidate) => candidate !== pageNumber)
+        : [...prev, pageNumber]
+    ));
+  }, []);
+
+  const handleSelectAllPages = useCallback(() => {
+    setSelectedPages(Array.from({ length: state.numPages }, (_, index) => index + 1));
+  }, [state.numPages]);
+
   const handleRotate = async (pageIndex: number) => {
     if (!state.pdfData) return;
     const { annotations, pdfData } = await rotatePageWithAnnotations(state.pdfData, pageIndex, state.annotations);
@@ -153,7 +223,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
   const handleDelete = async (pageIndex: number) => {
     if (!state.pdfData || state.numPages <= 1) return;
     if (!(await dqConfirm(`ページ${pageIndex + 1}を\n削除しますか？`))) return;
-    const newBytes = await deletePage(state.pdfData, pageIndex);
+    const newBytes = await deletePages(state.pdfData, [pageIndex]);
     const newNumPages = state.numPages - 1;
     const deletedPage = pageIndex + 1;
     const nextCurrentPage =
@@ -169,7 +239,8 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
         currentPage: nextCurrentPage,
       },
     });
-    generateThumbnails();
+    setThumbnails((prev) => prev.filter((_, index) => index !== pageIndex));
+    showDqToast('ページを削除しました', 'success');
   };
 
   const handleMove = async (pageIndex: number, direction: 'up' | 'down') => {
@@ -265,6 +336,46 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     const blob = savePdfAsBlob(result);
     downloadBlob(blob, `split_p${indices.map(i => i + 1).join('-')}.pdf`);
     showDqToast(`${indices.length}ページを抽出しました`, 'success');
+  };
+
+  const handleBulkExtract = async () => {
+    if (!state.pdfData || sortedSelectedPages.length === 0) return;
+    const indices = sortedSelectedPages.map((pageNumber) => pageNumber - 1);
+    const result = await splitPdf(state.pdfData, indices);
+    const blob = savePdfAsBlob(result);
+    downloadBlob(blob, `selected_p${sortedSelectedPages.join('-')}.pdf`);
+    showDqToast(`${sortedSelectedPages.length}ページを抽出しました`, 'success');
+  };
+
+  const handleBulkDelete = async () => {
+    if (!state.pdfData || sortedSelectedPages.length === 0) return;
+    if (sortedSelectedPages.length >= state.numPages) {
+      showDqToast('最低1ページは残してください', 'error');
+      return;
+    }
+    const previewText = selectedPageLabel === 'まだ選択されていません' ? '' : `\n(${selectedPageLabel})`;
+    if (!(await dqConfirm(`選択した${sortedSelectedPages.length}ページを${previewText}\n削除しますか？`))) return;
+
+    const newBytes = await deletePages(
+      state.pdfData,
+      sortedSelectedPages.map((pageNumber) => pageNumber - 1),
+    );
+    const deletedSet = new Set(sortedSelectedPages);
+    const newNumPages = state.numPages - sortedSelectedPages.length;
+
+    dispatch({
+      type: 'UPDATE_PDF_DATA',
+      payload: {
+        pdfData: newBytes.buffer as ArrayBuffer,
+        numPages: newNumPages,
+        annotations: rebaseAnnotationsAfterDeleteMany(state.annotations, sortedSelectedPages),
+        currentPage: getCurrentPageAfterDeleteMany(state.currentPage, state.numPages, sortedSelectedPages),
+      },
+    });
+    setThumbnails((prev) => prev.filter((_, index) => !deletedSet.has(index + 1)));
+    setSelectedPages([]);
+    setSelectionMode(false);
+    showDqToast(`${sortedSelectedPages.length}ページを削除しました`, 'success');
   };
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>, index: number) => {
@@ -416,10 +527,12 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
         >
           <div>
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
-              サムネイルをドラッグして、直感的に並べ替え
+              {selectionMode ? 'カードを押して、まとめて抽出や削除' : 'サムネイルをドラッグして、直感的に並べ替え'}
             </p>
             <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.72 }}>
-              順番変更後はサムネイルを描き直さず、そのまま軽く更新します
+              {selectionMode
+                ? '複数ページを一度に選んで、抽出や削除をまとめて進められます'
+                : '順番変更後はサムネイルを描き直さず、そのまま軽く更新します'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -433,13 +546,74 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
             >
               現在ページ {state.currentPage}/{state.numPages}
             </span>
-            {isReordering && (
+            <button
+              onClick={toggleSelectionMode}
+              className="dq-btn-small px-3 py-2"
+              style={selectionMode
+                ? { borderColor: '#d4a017', boxShadow: '0 0 8px rgba(212,160,23,0.45)' }
+                : undefined}
+            >
+              {selectionMode ? '選択終了' : '複数選択'}
+            </button>
+            {isReordering && !selectionMode && (
               <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
                 並べ替え中...
               </span>
             )}
           </div>
         </div>
+        {selectionMode && (
+          <div
+            className="space-y-3 rounded-md border px-3 py-3"
+            style={{
+              background: 'rgba(212,160,23,0.08)',
+              borderColor: 'rgba(212,160,23,0.4)',
+            }}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
+                  {sortedSelectedPages.length}ページ選択中
+                </p>
+                <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.72 }}>
+                  選択: {selectedPageLabel}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={handleSelectAllPages} className="dq-btn-small px-3 py-2">
+                  すべて選択
+                </button>
+                <button onClick={clearSelectedPages} className="dq-btn-small px-3 py-2">
+                  クリア
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                onClick={handleBulkExtract}
+                disabled={sortedSelectedPages.length === 0}
+                className="dq-btn flex items-center justify-center gap-2"
+                style={{
+                  opacity: sortedSelectedPages.length === 0 ? 0.45 : 1,
+                  cursor: sortedSelectedPages.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Scissors size={16} /> 選択ページを抽出
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={sortedSelectedPages.length === 0 || sortedSelectedPages.length >= state.numPages}
+                className="dq-btn-danger flex items-center justify-center gap-2"
+                style={{
+                  opacity: sortedSelectedPages.length === 0 || sortedSelectedPages.length >= state.numPages ? 0.45 : 1,
+                  cursor: sortedSelectedPages.length === 0 || sortedSelectedPages.length >= state.numPages ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Trash2 size={16} /> 選択ページを削除
+              </button>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <YuunamaLilith size={56} bounce />
@@ -448,7 +622,9 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {displayThumbnails.map((thumb, displayIndex) => {
+              const pageNumber = displayIndex + 1;
               const isActive = state.currentPage === displayIndex + 1;
+              const isSelected = selectedPageSet.has(pageNumber);
               const isFirst = displayIndex === 0;
               const isLast = displayIndex === displayThumbnails.length - 1;
               const isDropTarget = draggedIndex !== null && dropIndex === displayIndex && draggedIndex !== displayIndex;
@@ -458,22 +634,24 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                 <div
                   key={thumb.id}
                   className="relative group flex flex-col items-center"
-                  draggable={!isReordering}
+                  draggable={!isReordering && !selectionMode}
                   onDragStart={(event) => handleDragStart(event, displayIndex)}
                   onDragEnd={handleDragEnd}
                   onDragOver={(event) => {
                     event.preventDefault();
-                    if (draggedIndex !== null && dropIndex !== displayIndex) {
+                    if (!selectionMode && draggedIndex !== null && dropIndex !== displayIndex) {
                       setDropIndex(displayIndex);
                     }
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
-                    void handleDropReorder(displayIndex);
+                    if (!selectionMode) {
+                      void handleDropReorder(displayIndex);
+                    }
                   }}
                   style={{
                     opacity: isDraggingCard ? 0.72 : 1,
-                    transform: isDropTarget ? 'translateY(-4px) scale(1.01)' : undefined,
+                    transform: !selectionMode && isDropTarget ? 'translateY(-4px) scale(1.01)' : undefined,
                     transition: 'transform 0.15s ease, opacity 0.15s ease',
                   }}
                 >
@@ -481,26 +659,40 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                   <div
                     className="dq-thumbnail-frame cursor-pointer w-full transition-shadow"
                     style={{
-                      border: `3px solid ${isDropTarget ? '#facc15' : isActive ? '#d4a017' : '#7a5540'}`,
+                      border: `3px solid ${
+                        !selectionMode && isDropTarget
+                          ? '#facc15'
+                          : isSelected
+                          ? '#d4a017'
+                          : isActive && !selectionMode
+                          ? '#d4a017'
+                          : '#7a5540'
+                      }`,
                       borderRadius: 6,
                       overflow: 'hidden',
                       background: '#1a1008',
-                      boxShadow: isDropTarget
+                      boxShadow: !selectionMode && isDropTarget
                         ? '0 0 0 2px rgba(250,204,21,0.22), 0 10px 20px rgba(0,0,0,0.3)'
+                        : isSelected
+                        ? '0 0 0 2px rgba(212,160,23,0.24), 0 10px 20px rgba(0,0,0,0.28)'
                         : isActive
                         ? '0 0 14px rgba(245, 214, 123, 0.5)'
                         : '0 2px 8px rgba(0,0,0,0.4)',
                     }}
                     onClick={() => {
                       if (draggedIndex !== null) return;
-                      dispatch({ type: 'SET_PAGE', payload: displayIndex + 1 });
+                      if (selectionMode) {
+                        toggleSelectedPage(pageNumber);
+                        return;
+                      }
+                      dispatch({ type: 'SET_PAGE', payload: pageNumber });
                       onClose();
                     }}
                   >
                     {thumb.dataURL ? (
                       <Image
                         src={thumb.dataURL}
-                        alt={`ページ ${displayIndex + 1}`}
+                        alt={`ページ ${pageNumber}`}
                         width={thumb.width}
                         height={thumb.height}
                         className="w-full h-auto"
@@ -513,56 +705,79 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     )}
                   </div>
 
+                  {selectionMode && (
+                    <div
+                      className="absolute top-1 left-1 inline-flex items-center gap-1 rounded-full px-2 py-1"
+                      style={{
+                        background: isSelected ? 'rgba(212,160,23,0.9)' : 'rgba(0,0,0,0.66)',
+                        border: `1px solid ${isSelected ? 'rgba(245,214,123,0.92)' : 'rgba(92,74,46,0.5)'}`,
+                        color: isSelected ? '#2a1e12' : 'var(--ynk-bone)',
+                      }}
+                    >
+                      {isSelected ? <Check size={12} /> : <span className="dq-text text-[9px]">選択</span>}
+                    </div>
+                  )}
+
                   {/* ページ番号 */}
-                  <p className="dq-text text-center text-xs mt-1" style={{ color: isActive ? '#d4a017' : 'var(--ynk-bone)', fontWeight: isActive ? 700 : 400 }}>
-                    {displayIndex + 1}
+                  <p
+                    className="dq-text text-center text-xs mt-1"
+                    style={{
+                      color: isSelected || isActive ? '#d4a017' : 'var(--ynk-bone)',
+                      fontWeight: isSelected || isActive ? 700 : 400,
+                    }}
+                  >
+                    {pageNumber}
                   </p>
 
-                  <div
-                    className="absolute bottom-6 right-1 inline-flex items-center gap-1 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{
-                      background: 'rgba(0,0,0,0.66)',
-                      border: '1px solid rgba(92,74,46,0.5)',
-                      color: 'var(--ynk-gold)',
-                    }}
-                    aria-hidden="true"
-                  >
-                    <GripVertical size={12} />
-                    <span className="dq-text text-[9px]">ドラッグ</span>
-                  </div>
+                  {!selectionMode && (
+                    <div
+                      className="absolute bottom-6 right-1 inline-flex items-center gap-1 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{
+                        background: 'rgba(0,0,0,0.66)',
+                        border: '1px solid rgba(92,74,46,0.5)',
+                        color: 'var(--ynk-gold)',
+                      }}
+                      aria-hidden="true"
+                    >
+                      <GripVertical size={12} />
+                      <span className="dq-text text-[9px]">ドラッグ</span>
+                    </div>
+                  )}
 
                   {/* 操作ボタン群（右上） */}
-                  <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleRotate(displayIndex); }}
-                      className="dq-btn-small flex items-center justify-center"
-                      title="回転"
-                      aria-label={`ページ${displayIndex + 1}を回転`}
-                      style={{ minHeight: 28, minWidth: 28, padding: 3 }}
-                    >
-                      <RotateCw size={13} />
-                    </button>
-                    {state.numPages > 1 && (
+                  {!selectionMode && (
+                    <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(displayIndex); }}
-                        className="dq-btn-danger flex items-center justify-center"
-                        title="削除"
-                        aria-label={`ページ${displayIndex + 1}を削除`}
+                        onClick={(e) => { e.stopPropagation(); handleRotate(displayIndex); }}
+                        className="dq-btn-small flex items-center justify-center"
+                        title="回転"
+                        aria-label={`ページ${pageNumber}を回転`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                       >
-                        <Trash2 size={13} />
+                        <RotateCw size={13} />
                       </button>
-                    )}
-                  </div>
+                      {state.numPages > 1 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(displayIndex); }}
+                          className="dq-btn-danger flex items-center justify-center"
+                          title="削除"
+                          aria-label={`ページ${pageNumber}を削除`}
+                          style={{ minHeight: 28, minWidth: 28, padding: 3 }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* 移動ボタン群（左側） */}
-                  {state.numPages > 1 && (
+                  {!selectionMode && state.numPages > 1 && (
                     <div className="absolute top-1 left-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => { e.stopPropagation(); void handleMove(displayIndex, 'up'); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="前へ移動"
-                        aria-label={`ページ${displayIndex + 1}を前へ移動`}
+                        aria-label={`ページ${pageNumber}を前へ移動`}
                         disabled={isFirst}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isFirst ? 0.3 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
                       >
@@ -572,7 +787,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); void handleMove(displayIndex, 'down'); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="後へ移動"
-                        aria-label={`ページ${displayIndex + 1}を後へ移動`}
+                        aria-label={`ページ${pageNumber}を後へ移動`}
                         disabled={isLast}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isLast ? 0.3 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
                       >
@@ -582,7 +797,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleDuplicate(displayIndex); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="複製"
-                        aria-label={`ページ${displayIndex + 1}を複製`}
+                        aria-label={`ページ${pageNumber}を複製`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                       >
                         <Copy size={13} />
@@ -591,7 +806,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                         onClick={(e) => { e.stopPropagation(); handleInsertBlank(displayIndex); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="空白ページ挿入"
-                        aria-label={`ページ${displayIndex + 1}の後に空白ページ挿入`}
+                        aria-label={`ページ${pageNumber}の後に空白ページ挿入`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
                       >
                         <FilePlus size={13} />

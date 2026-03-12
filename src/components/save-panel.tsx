@@ -14,6 +14,7 @@ import {
 import type { BatchAnnotation } from '@/lib/pdf-editor';
 import SlidePanel from './slide-panel';
 import { YuunamaMushroomMan } from '@/components/dq-characters';
+import { loadSettings, saveSettings } from '@/lib/user-settings';
 import type { TextStyle, DrawStyle, HighlightStyle, ShapeStyle, Annotation } from '@/types/pdf';
 
 type SavePreset = 'pdf' | 'pdf-json' | 'image';
@@ -24,7 +25,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [lastPreset, setLastPreset] = useState<SavePreset>('pdf');
+  const [lastPreset, setLastPreset] = useState<SavePreset>(() => (loadSettings().lastSavePreset as SavePreset) || 'pdf');
 
   // ウォーターマーク設定
   const [showWatermark, setShowWatermark] = useState(false);
@@ -46,8 +47,14 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       setShowAdvanced(false);
       setShowWatermark(false);
       setShowMeta(false);
+      setLastPreset((loadSettings().lastSavePreset as SavePreset) || 'pdf');
     }
   }, [isOpen, state.file?.name]);
+
+  const rememberPreset = useCallback((preset: SavePreset) => {
+    setLastPreset(preset);
+    saveSettings({ lastSavePreset: preset });
+  }, []);
 
   const getBaseFilename = useCallback(() => filename.trim() || 'document', [filename]);
 
@@ -185,7 +192,9 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     return applyAllAnnotations(state.pdfData, batch, setSaveProgress);
   }, [state.pdfData, state.annotations]);
 
-  const handleSavePDF = async (options?: { exportJsonAfter?: boolean; keepOpen?: boolean; preset?: SavePreset; successMessage?: string }) => {
+  const handleSavePDF = useCallback(async (
+    options?: { exportJsonAfter?: boolean; keepOpen?: boolean; preset?: SavePreset; successMessage?: string },
+  ) => {
     setSaving(true);
     setSaveProgress(0);
     try {
@@ -211,7 +220,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
         exportAnnotationsJson();
       }
       dispatch({ type: 'SET_MODIFIED', payload: false });
-      setLastPreset(options?.preset || 'pdf');
+      rememberPreset(options?.preset || 'pdf');
       showDqToast(options?.successMessage || 'PDFを保存しました！', 'success');
       if (!options?.keepOpen) {
         onClose();
@@ -222,9 +231,9 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       setSaving(false);
       setSaveProgress(0);
     }
-  };
+  }, [applyAnnotations, dispatch, exportAnnotationsJson, getFilename, metaAuthor, metaTitle, onClose, rememberPreset, state.annotations.length, watermarkOpacity, watermarkSize, watermarkText]);
 
-  const handleSaveImage = async () => {
+  const handleSaveImage = useCallback(async () => {
     const canvas = document.querySelector('.pdf-canvas-container canvas') as HTMLCanvasElement;
     if (!canvas) return;
     setSaving(true);
@@ -367,13 +376,25 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       a.href = dataURL;
       a.download = `${getBaseFilename()}_${state.currentPage}.png`;
       a.click();
-      setLastPreset('image');
+      rememberPreset('image');
       showDqToast('画像を保存しました！', 'success');
       onClose();
     } finally {
       setSaving(false);
     }
-  };
+  }, [getBaseFilename, onClose, rememberPreset, state.annotations, state.currentPage]);
+
+  const handleRunLastPreset = useCallback(() => {
+    if (lastPreset === 'pdf-json') {
+      void handleSavePDF({ exportJsonAfter: true, preset: 'pdf-json', successMessage: 'PDFとJSONを保存しました！' });
+      return;
+    }
+    if (lastPreset === 'image') {
+      void handleSaveImage();
+      return;
+    }
+    void handleSavePDF({ preset: 'pdf' });
+  }, [handleSaveImage, handleSavePDF, lastPreset]);
 
   const handleImportJSON = useCallback(() => {
     const input = document.createElement('input');
@@ -428,6 +449,8 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
     return Object.entries(counts).map(([label, count]) => `${label}${count}件`).join('、');
   }, [state.annotations]);
 
+  const lastPresetLabel = lastPreset === 'pdf-json' ? 'PDF + JSON' : lastPreset === 'image' ? '現在ページPNG' : '通常PDF';
+
   return (
     <SlidePanel
       isOpen={isOpen}
@@ -466,6 +489,32 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
             <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>未保存の変更があります</p>
           </div>
         )}
+
+        <div
+          className="rounded-md border px-3 py-3"
+          style={{
+            background: 'rgba(0,0,0,0.18)',
+            borderColor: 'rgba(92,74,46,0.4)',
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
+                前回よく使った保存
+              </p>
+              <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.72 }}>
+                {lastPresetLabel} を覚えています。迷わなければこのまま使えます
+              </p>
+            </div>
+            <button
+              onClick={handleRunLastPreset}
+              disabled={saving}
+              className="dq-btn px-4 py-2 whitespace-nowrap"
+            >
+              前回と同じ
+            </button>
+          </div>
+        </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
