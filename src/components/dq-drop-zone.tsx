@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { DqSlime } from '@/components/dq-slime';
@@ -33,9 +33,7 @@ export default function DqDropZone() {
   const [isDragging, setIsDragging] = useState(false);
   const [fileSize, setFileSize] = useState('');
   const [largeFileWarning, setLargeFileWarning] = useState(false);
-  const [draftSnapshot, setDraftSnapshot] = useState<DraftSnapshot>(() => (
-    typeof window === 'undefined' ? null : loadDraft()
-  ));
+  const [draftSnapshot, setDraftSnapshot] = useState<DraftSnapshot>(null);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -132,6 +130,13 @@ export default function DqDropZone() {
     setPhase('idle');
     setErrorMsg('');
     setProgress(0);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDraftSnapshot(loadDraft());
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const discardDraft = useCallback(() => {
