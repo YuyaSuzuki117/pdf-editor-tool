@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { usePDF } from '@/contexts/pdf-context';
 import { DqSlime } from './dq-slime';
 import { YuunamaHero, YuunamaLilith, YuunamaGoblin, YuunamaMushroomMan, YuunamaSlime, YuunamaSkeleton } from './dq-characters';
 
@@ -25,15 +26,26 @@ const steps = [
 ];
 
 export default function Onboarding() {
-  const [visible, setVisible] = useState(() => {
-    try {
-      return !localStorage.getItem(STORAGE_KEY);
-    } catch {
-      return false;
-    }
-  });
+  const { state } = usePDF();
+  const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    if (!state.pdfData) return;
+    try {
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        const timer = window.setTimeout(() => {
+          setExiting(false);
+          setVisible(true);
+          setStep(0);
+        }, 0);
+        return () => window.clearTimeout(timer);
+      }
+    } catch {
+      // ignore
+    }
+  }, [state.pdfData]);
 
   const finish = () => {
     setExiting(true);
