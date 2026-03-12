@@ -7,6 +7,7 @@ import { DqSlime } from '@/components/dq-slime';
 import { YuunamaGoblin } from '@/components/dq-characters';
 import PageNav from '@/components/page-nav';
 import { dqConfirm } from '@/components/dq-confirm';
+import { emitUiEvent, uiEvents } from '@/lib/ui-events';
 
 export default function DqHeader() {
   const { state, dispatch } = usePDF();
@@ -69,6 +70,12 @@ export default function DqHeader() {
     return () => window.removeEventListener('quick-print', handler);
   }, [handlePrint]);
 
+  useEffect(() => {
+    const handler = () => fileInputRef.current?.click();
+    window.addEventListener(uiEvents.openPdfPicker, handler);
+    return () => window.removeEventListener(uiEvents.openPdfPicker, handler);
+  }, []);
+
   const annotationCount = state.annotations.length;
 
   return (
@@ -125,9 +132,23 @@ export default function DqHeader() {
         </div>
       )}
 
-      {/* 右: 保存 + 印刷 + 新規ファイル選択 */}
-      {hasPdf && (
-        <div className="flex items-center gap-1">
+      {/* 右: クイック操作 + 保存 + 印刷 + 新規ファイル選択 */}
+      <div className="flex items-center gap-1">
+          <button
+            onClick={() => emitUiEvent(uiEvents.toggleQuickActions)}
+            className="dq-window flex items-center justify-center w-9 h-9 min-h-[44px] min-w-[44px] rounded-lg cursor-pointer select-none active:scale-90 transition-transform"
+            aria-label="クイック操作"
+            title="クイック操作 (Ctrl+K)"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--ynk-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6h16" />
+              <path d="M4 12h10" />
+              <path d="M4 18h16" />
+              <path d="m15 9 3 3-3 3" />
+            </svg>
+          </button>
+        {hasPdf && (
+          <>
           {state.isModified && (
             <button
               onClick={() => dispatch({ type: 'SET_TOOL', payload: 'save' })}
@@ -186,8 +207,9 @@ export default function DqHeader() {
               e.target.value = '';
             }}
           />
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </header>
   );
 }

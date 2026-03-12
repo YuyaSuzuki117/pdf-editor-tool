@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes, getPageText } from '@/lib/pdf-engine';
+import { uiEvents } from '@/lib/ui-events';
 
 interface SearchResult {
   page: number;
@@ -21,22 +22,51 @@ export default function SearchPanel() {
   const pageTextsCache = useRef<Map<number, string>>(new Map());
   const cachedPdfDataRef = useRef<ArrayBuffer | null>(null);
   const totalMatches = results.reduce((sum, r) => sum + r.count, 0);
+  const focusInput = useCallback(() => {
+    window.setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+  const openPanel = useCallback(() => {
+    setIsOpen(true);
+    focusInput();
+  }, [focusInput]);
+  const closePanel = useCallback(() => {
+    setIsOpen(false);
+    setQuery('');
+    setResults([]);
+  }, []);
 
   // Ctrl+F で開閉
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
-        setTimeout(() => inputRef.current?.focus(), 100);
+        setIsOpen(prev => {
+          const next = !prev;
+          if (next) focusInput();
+          return next;
+        });
       }
       if (e.key === 'Escape' && isOpen) {
         setIsOpen(false);
       }
     };
+    const openHandler = () => openPanel();
+    const toggleHandler = () => {
+      setIsOpen(prev => {
+        const next = !prev;
+        if (next) focusInput();
+        return next;
+      });
+    };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen]);
+    window.addEventListener(uiEvents.openSearchPanel, openHandler);
+    window.addEventListener(uiEvents.toggleSearchPanel, toggleHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener(uiEvents.openSearchPanel, openHandler);
+      window.removeEventListener(uiEvents.toggleSearchPanel, toggleHandler);
+    };
+  }, [focusInput, isOpen, openPanel]);
 
   const doSearch = useCallback(async () => {
     if (!query.trim() || !state.pdfData) {
@@ -112,9 +142,9 @@ export default function SearchPanel() {
       {/* 検索トリガーボタン（ヘッダー用） */}
       {!isOpen && (
         <button
-          onClick={() => { setIsOpen(true); setTimeout(() => inputRef.current?.focus(), 100); }}
+          onClick={openPanel}
           className="fixed top-2 right-[8.5rem] z-[65] dq-btn-small flex items-center justify-center"
-          style={{ minWidth: 36, minHeight: 36, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', borderColor: 'var(--window-border)', color: 'var(--ynk-bone)' }}
+          style={{ minWidth: 36, minHeight: 36, right: 'calc(env(safe-area-inset-right, 0px) + 12.75rem)', background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', borderColor: 'var(--window-border)', color: 'var(--ynk-bone)' }}
           title="検索 (Ctrl+F)"
           aria-label="テキスト検索"
         >
@@ -162,7 +192,7 @@ export default function SearchPanel() {
               </span>
             )}
             <button
-              onClick={() => { setIsOpen(false); setQuery(''); setResults([]); }}
+              onClick={closePanel}
               className="flex items-center justify-center"
               style={{ color: 'var(--ynk-bone)', minWidth: 28, minHeight: 28 }}
             >

@@ -29,6 +29,7 @@ function hexToRgb(r_hex: string, rgb_fn: typeof import('pdf-lib').rgb) {
 let cachedFontBytes: ArrayBuffer | null = null;
 
 const FONT_URLS = [
+  '/fonts/noto-sans-jp-400-normal.ttf',
   'https://fonts.gstatic.com/s/notosansjp/v56/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75s.ttf',
   'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-jp@latest/japanese-400-normal.ttf',
 ];
@@ -344,7 +345,7 @@ export async function applyAllAnnotations(
       const fontBytes = await getJapaneseFont();
       jpFont = await doc.embedFont(fontBytes, { subset: true });
     } catch (err) {
-      throw new Error('日本語フォントの読み込みに失敗しました。インターネット接続を確認してください。' + (err instanceof Error ? ' (' + err.message + ')' : ''));
+      throw new Error('日本語フォントの読み込みに失敗しました。ローカル資産を確認してください。' + (err instanceof Error ? ' (' + err.message + ')' : ''));
     }
   }
   if (annotations.some((a) => a.type === 'text')) {

@@ -1,11 +1,12 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
+const PDFJS_ASSET_BASE = '/pdfjs';
 
 async function getPdfjs() {
   if (pdfjsLib) return pdfjsLib;
   pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS_ASSET_BASE}/pdf.worker.min.mjs`;
   return pdfjsLib;
 }
 
@@ -20,8 +21,9 @@ export async function loadDocumentFromBytes(
   const pdfjs = await getPdfjs();
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(data.slice(0)),
-    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+    cMapUrl: `${PDFJS_ASSET_BASE}/cmaps/`,
     cMapPacked: true,
+    standardFontDataUrl: `${PDFJS_ASSET_BASE}/standard_fonts/`,
   });
   return loadingTask.promise;
 }

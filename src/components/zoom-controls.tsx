@@ -6,6 +6,7 @@ import { getPageText } from '@/lib/pdf-engine';
 import { rotatePage } from '@/lib/pdf-editor';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import { showDqToast } from '@/lib/toast';
+import { uiEvents } from '@/lib/ui-events';
 
 const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5];
 
@@ -90,6 +91,12 @@ const ZoomControls = React.memo(function ZoomControls() {
       setCopying(false);
     }
   }, [state.pdfData, state.currentPage, copying]);
+
+  useEffect(() => {
+    const handler = () => { handleCopyText(); };
+    window.addEventListener(uiEvents.copyPageText, handler);
+    return () => window.removeEventListener(uiEvents.copyPageText, handler);
+  }, [handleCopyText]);
 
   const pct = Math.round(state.scale * 100);
 

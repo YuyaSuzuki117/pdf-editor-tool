@@ -17,6 +17,7 @@ import StampPanel from '@/components/stamp-panel';
 import AnnotationList from '@/components/annotation-list';
 import Onboarding from '@/components/onboarding';
 import SearchPanel from '@/components/search-panel';
+import QuickActions from '@/components/quick-actions';
 import { ErrorBoundary } from '@/components/error-boundary';
 import DqConfirmProvider from '@/components/dq-confirm';
 import ShortcutHelp from '@/components/shortcut-help';
@@ -341,6 +342,7 @@ function PDFApp() {
         </div>
       )}
       <SearchPanel />
+      <QuickActions />
       <PDFViewer />
       <PageThumbnails />
       <ZoomControls />

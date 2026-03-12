@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
+import { uiEvents } from '@/lib/ui-events';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 const THUMB_WIDTH = 80;
@@ -66,6 +67,17 @@ const PageThumbnails = React.memo(function PageThumbnails() {
         docRef.current.destroy();
         docRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const openHandler = () => setIsOpen(true);
+    const toggleHandler = () => setIsOpen((current) => !current);
+    window.addEventListener(uiEvents.openThumbnailStrip, openHandler);
+    window.addEventListener(uiEvents.toggleThumbnailStrip, toggleHandler);
+    return () => {
+      window.removeEventListener(uiEvents.openThumbnailStrip, openHandler);
+      window.removeEventListener(uiEvents.toggleThumbnailStrip, toggleHandler);
     };
   }, []);
 

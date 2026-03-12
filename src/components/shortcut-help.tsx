@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { uiEvents } from '@/lib/ui-events';
 
 const shortcuts = [
+  { keys: 'Ctrl+K', desc: 'クイック操作を開く' },
   { keys: 'Ctrl+Z', desc: '元に戻す (Undo)' },
   { keys: 'Ctrl+Shift+Z', desc: 'やり直し (Redo)' },
   { keys: 'Ctrl+S', desc: '保存パネルを開く' },
@@ -38,8 +40,13 @@ export default function ShortcutHelp() {
         setVisible(false);
       }
     };
+    const toggleHandler = () => setVisible((current) => !current);
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener(uiEvents.toggleShortcutHelp, toggleHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener(uiEvents.toggleShortcutHelp, toggleHandler);
+    };
   }, [visible]);
 
   if (!visible) return null;

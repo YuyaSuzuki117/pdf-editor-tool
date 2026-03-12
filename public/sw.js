@@ -1,5 +1,14 @@
-const CACHE_NAME = 'pdf-editor-v1';
+const CACHE_NAME = 'pdf-editor-v2';
 const STATIC_ASSETS = ['/', '/manifest.webmanifest'];
+
+function shouldCacheRuntimeAsset(url) {
+  return (
+    url.includes('_next/static') ||
+    url.includes('/icon') ||
+    url.includes('/pdfjs/') ||
+    url.includes('/fonts/')
+  );
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -20,7 +29,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // App shell のみキャッシュ（PDFファイルはキャッシュしない）
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('_next/static') || event.request.url.includes('/icon')) {
+  if (shouldCacheRuntimeAsset(event.request.url)) {
     event.respondWith(
       caches.match(event.request).then((cached) => cached || fetch(event.request).then((resp) => {
         const clone = resp.clone();
