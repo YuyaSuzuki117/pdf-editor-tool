@@ -33,7 +33,7 @@ export function DqWindow({ title, children, onClose, className = "" }: DqWindowP
                 border: "3px solid #6b6b6b",
                 borderRadius: "4px",
                 color: "#e8dcc8",
-                fontFamily: "'DotGothic16', monospace",
+                fontFamily: "var(--font-dot-gothic), var(--font-noto-sans-jp), monospace",
                 fontSize: "12px",
                 padding: "4px 12px",
                 minHeight: "32px",

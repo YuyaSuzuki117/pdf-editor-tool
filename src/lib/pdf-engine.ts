@@ -77,17 +77,17 @@ export async function renderPageToDataURL(
   doc: PDFDocumentProxy,
   pageNum: number,
   scale: number = 0.5
-): Promise<string> {
+): Promise<{ dataURL: string; width: number; height: number }> {
   const page = await doc.getPage(pageNum);
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return '';
+  if (!ctx) return { dataURL: '', width: viewport.width, height: viewport.height };
   await page.render({ canvasContext: ctx, viewport, canvas }).promise;
   const dataURL = canvas.toDataURL('image/png');
   canvas.width = 0;
   canvas.height = 0;
-  return dataURL;
+  return { dataURL, width: viewport.width, height: viewport.height };
 }

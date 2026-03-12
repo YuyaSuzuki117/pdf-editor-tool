@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 const THUMB_WIDTH = 80;
+type ThumbnailData = { dataURL: string; width: number; height: number };
 
 const PageThumbnails = React.memo(function PageThumbnails() {
   const { state, dispatch } = usePDF();
   const [isOpen, setIsOpen] = useState(false);
-  const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map());
+  const [thumbnails, setThumbnails] = useState<Map<number, ThumbnailData>>(new Map());
   const [loading, setLoading] = useState(false);
   const docRef = useRef<PDFDocumentProxy | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -37,12 +39,12 @@ const PageThumbnails = React.memo(function PageThumbnails() {
         docRef.current = doc;
 
         // 順番にサムネイル生成（一気にやるとメモリ消費が大きい）
-        const newThumbs = new Map<number, string>();
+        const newThumbs = new Map<number, ThumbnailData>();
         for (let i = 1; i <= doc.numPages; i++) {
           if (cancelled) break;
           const scale = THUMB_WIDTH / 595; // A4幅=595pt基準
-          const dataURL = await renderPageToDataURL(doc, i, Math.max(0.15, scale));
-          newThumbs.set(i, dataURL);
+          const rendered = await renderPageToDataURL(doc, i, Math.max(0.15, scale));
+          newThumbs.set(i, rendered);
           setThumbnails(new Map(newThumbs));
         }
       } catch (err) {
@@ -96,7 +98,7 @@ const PageThumbnails = React.memo(function PageThumbnails() {
       {/* トグルボタン */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed left-0 z-[42] flex items-center justify-center w-6 h-16 cursor-pointer select-none"
+        className="fixed left-0 z-[42] flex flex-col items-center justify-center w-10 h-20 cursor-pointer select-none gap-1"
         style={{
           top: '50%',
           transform: 'translateY(-50%)',
@@ -110,6 +112,9 @@ const PageThumbnails = React.memo(function PageThumbnails() {
         aria-label={isOpen ? 'サムネイルを閉じる' : 'ページサムネイルを開く'}
       >
         {isOpen ? <ChevronLeft size={14} style={{ color: 'var(--ynk-gold)' }} /> : <ChevronRight size={14} style={{ color: 'var(--ynk-gold)' }} />}
+        <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-gold)', writingMode: 'vertical-rl', textOrientation: 'upright', lineHeight: 1 }}>
+          {isOpen ? '閉' : '頁'}
+        </span>
       </button>
 
       {/* サムネイルパネル */}
@@ -155,12 +160,13 @@ const PageThumbnails = React.memo(function PageThumbnails() {
                     }}
                   >
                     {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumb}
+                      <Image
+                        src={thumb.dataURL}
                         alt={`ページ ${page}`}
-                        style={{ width: '100%', height: 'auto', display: 'block' }}
-                        loading="lazy"
+                        width={thumb.width}
+                        height={thumb.height}
+                        className="w-full h-auto block"
+                        unoptimized
                       />
                     ) : (
                       <div className="flex items-center justify-center h-full" style={{ minHeight: THUMB_WIDTH * 1.4 }}>

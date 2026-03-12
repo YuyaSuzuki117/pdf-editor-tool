@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { dotGothicFont, notoSansJpFont } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,20 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="preload"
-          as="style"
-          href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700&display=swap"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="antialiased font-['DotGothic16','Noto_Sans_JP',monospace]">
+      <body className={`${dotGothicFont.variable} ${notoSansJpFont.variable} antialiased`}>
         {children}
         <Script id="sw-register" strategy="lazyOnload">{`
           if ('serviceWorker' in navigator) {

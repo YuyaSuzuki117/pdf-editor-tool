@@ -79,12 +79,13 @@ export type PDFAction =
   | { type: 'SET_SCALE'; payload: number }
   | { type: 'SET_TOOL'; payload: ToolMode }
   | { type: 'ADD_ANNOTATION'; payload: Annotation }
+  | { type: 'RESTORE_DRAFT'; payload: Annotation[] }
   | { type: 'REMOVE_ANNOTATION'; payload: string }
   | { type: 'UPDATE_ANNOTATION'; payload: { id: string; updates: Partial<Annotation> } }
   | { type: 'SET_MODIFIED'; payload: boolean }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'UPDATE_PDF_DATA'; payload: { pdfData: ArrayBuffer; numPages: number } }
+  | { type: 'UPDATE_PDF_DATA'; payload: { pdfData: ArrayBuffer; numPages: number; annotations?: Annotation[]; currentPage?: number } }
   | { type: 'UNDO_ANNOTATION' }
   | { type: 'REDO_ANNOTATION' }
   | { type: 'CLEAR_ANNOTATIONS' }

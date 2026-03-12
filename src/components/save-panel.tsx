@@ -21,6 +21,7 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
   const [filename, setFilename] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // ウォーターマーク設定
   const [showWatermark, setShowWatermark] = useState(false);
@@ -39,6 +40,9 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
       const today = new Date();
       const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
       setFilename(`${baseName}_${dateStr}`);
+      setShowAdvanced(false);
+      setShowWatermark(false);
+      setShowMeta(false);
     }
   }, [isOpen, state.file?.name]);
 
@@ -427,61 +431,6 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           <input id="save-filename" value={filename} onChange={(e) => setFilename(e.target.value)} placeholder={state.file?.name?.replace('.pdf', '') || 'document'} className="dq-input w-full" />
         </div>
 
-        {/* ウォーターマーク */}
-        <button
-          onClick={() => setShowWatermark(!showWatermark)}
-          className="w-full flex items-center justify-between px-3 py-2"
-          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
-          aria-expanded={showWatermark}
-        >
-          <span className="dq-text text-sm">ウォーターマーク</span>
-          {showWatermark ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-        {showWatermark && (
-          <div className="space-y-2 pl-2" style={{ borderLeft: '2px solid var(--window-border)' }}>
-            <input
-              value={watermarkText}
-              onChange={(e) => setWatermarkText(e.target.value)}
-              placeholder="例: CONFIDENTIAL, 社外秘, DRAFT"
-              className="dq-input w-full text-sm"
-              style={{ padding: '6px 10px' }}
-            />
-            <div className="flex items-center gap-2">
-              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>透明度:</span>
-              <input type="range" min={5} max={50} value={watermarkOpacity * 100} onChange={(e) => setWatermarkOpacity(Number(e.target.value) / 100)} style={{ accentColor: '#d4a017', flex: 1 }} />
-              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', minWidth: 32 }}>{Math.round(watermarkOpacity * 100)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>サイズ:</span>
-              <input type="range" min={20} max={100} value={watermarkSize} onChange={(e) => setWatermarkSize(Number(e.target.value))} style={{ accentColor: '#d4a017', flex: 1 }} />
-              <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', minWidth: 32 }}>{watermarkSize}pt</span>
-            </div>
-          </div>
-        )}
-
-        {/* メタデータ */}
-        <button
-          onClick={() => setShowMeta(!showMeta)}
-          className="w-full flex items-center justify-between px-3 py-2"
-          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
-          aria-expanded={showMeta}
-        >
-          <span className="dq-text text-sm">メタデータ</span>
-          {showMeta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-        {showMeta && (
-          <div className="space-y-2 pl-2" style={{ borderLeft: '2px solid var(--window-border)' }}>
-            <div>
-              <label className="dq-text text-xs block mb-1" style={{ color: 'var(--ynk-bone)' }}>タイトル</label>
-              <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder="PDF タイトル" className="dq-input w-full text-sm" style={{ padding: '6px 10px' }} />
-            </div>
-            <div>
-              <label className="dq-text text-xs block mb-1" style={{ color: 'var(--ynk-bone)' }}>作成者</label>
-              <input value={metaAuthor} onChange={(e) => setMetaAuthor(e.target.value)} placeholder="作成者名" className="dq-input w-full text-sm" style={{ padding: '6px 10px' }} />
-            </div>
-          </div>
-        )}
-
         {saving && (
           <div>
             <div className="flex justify-between mb-1">
@@ -500,60 +449,140 @@ export default function SavePanel({ isOpen, onClose }: { isOpen: boolean; onClos
           </div>
         )}
 
-        <button onClick={handleSavePDF} disabled={saving} className="dq-btn w-full flex items-center justify-center gap-2">
-          {saving ? <div className="dq-spinner-sm" /> : <FileDown size={20} />}
-          PDFを保存
-        </button>
-        <button
-          onClick={handleSaveImage}
-          disabled={saving}
-          className="dq-btn w-full flex items-center justify-center gap-2"
-          style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
-        >
-          <ImageIcon size={20} />
-          画像として保存（現在のページ）
-        </button>
-        {state.annotations.length > 0 && (
+        <div className="space-y-2">
           <button
-            onClick={() => {
-              const data = {
-                fileName: state.file?.name || 'unknown',
-                exportedAt: new Date().toISOString(),
-                annotations: state.annotations.map(ann => ({
-                  type: ann.type,
-                  page: ann.page,
-                  position: ann.position,
-                  content: ann.type === 'image' ? '[画像データ]' : ann.content,
-                  style: ann.style,
-                  createdAt: new Date(ann.createdAt).toISOString(),
-                })),
-              };
-              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `annotations_${filename.trim() || 'doc'}.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-              showDqToast('アノテーションをJSONで保存しました', 'success');
-            }}
+            onClick={handleSavePDF}
+            disabled={saving}
+            className="dq-btn w-full flex items-center justify-center gap-2"
+          >
+            {saving ? <div className="dq-spinner-sm" /> : <FileDown size={20} />}
+            PDFを保存
+          </button>
+          <button
+            onClick={handleSaveImage}
             disabled={saving}
             className="dq-btn w-full flex items-center justify-center gap-2"
             style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
           >
-            <FileJson size={20} />
-            アノテーションをJSON出力
+            <ImageIcon size={20} />
+            画像として保存（現在のページ）
           </button>
-        )}
+        </div>
+
         <button
-          onClick={handleImportJSON}
-          disabled={saving}
-          className="dq-btn w-full flex items-center justify-center gap-2"
-          style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full flex items-center justify-between px-3 py-2"
+          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+          aria-expanded={showAdvanced}
         >
-          <Upload size={20} />
-          アノテーションJSON読込
+          <span className="dq-text text-sm">くわしい設定・JSON</span>
+          {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
+
+        {showAdvanced && (
+          <div className="space-y-4">
+            <div className="dq-message-box" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(92,74,46,0.45)', borderRadius: 4, padding: '10px 12px' }}>
+              <p className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', opacity: 0.8 }}>
+                ウォーターマークやメタデータ、JSON入出力が必要なときだけ開いてください
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowWatermark(!showWatermark)}
+              className="w-full flex items-center justify-between px-3 py-2"
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+              aria-expanded={showWatermark}
+            >
+              <span className="dq-text text-sm">ウォーターマーク</span>
+              {showWatermark ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+            {showWatermark && (
+              <div className="space-y-2 pl-2" style={{ borderLeft: '2px solid var(--window-border)' }}>
+                <input
+                  value={watermarkText}
+                  onChange={(e) => setWatermarkText(e.target.value)}
+                  placeholder="例: CONFIDENTIAL, 社外秘, DRAFT"
+                  className="dq-input w-full text-sm"
+                  style={{ padding: '6px 10px' }}
+                />
+                <div className="flex items-center gap-2">
+                  <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>透明度:</span>
+                  <input type="range" min={5} max={50} value={watermarkOpacity * 100} onChange={(e) => setWatermarkOpacity(Number(e.target.value) / 100)} style={{ accentColor: '#d4a017', flex: 1 }} />
+                  <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', minWidth: 32 }}>{Math.round(watermarkOpacity * 100)}%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)' }}>サイズ:</span>
+                  <input type="range" min={20} max={100} value={watermarkSize} onChange={(e) => setWatermarkSize(Number(e.target.value))} style={{ accentColor: '#d4a017', flex: 1 }} />
+                  <span className="dq-text text-xs" style={{ color: 'var(--ynk-bone)', minWidth: 32 }}>{watermarkSize}pt</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowMeta(!showMeta)}
+              className="w-full flex items-center justify-between px-3 py-2"
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--window-border)', borderRadius: 4, color: 'var(--ynk-gold)' }}
+              aria-expanded={showMeta}
+            >
+              <span className="dq-text text-sm">メタデータ</span>
+              {showMeta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+            {showMeta && (
+              <div className="space-y-2 pl-2" style={{ borderLeft: '2px solid var(--window-border)' }}>
+                <div>
+                  <label className="dq-text text-xs block mb-1" style={{ color: 'var(--ynk-bone)' }}>タイトル</label>
+                  <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder="PDF タイトル" className="dq-input w-full text-sm" style={{ padding: '6px 10px' }} />
+                </div>
+                <div>
+                  <label className="dq-text text-xs block mb-1" style={{ color: 'var(--ynk-bone)' }}>作成者</label>
+                  <input value={metaAuthor} onChange={(e) => setMetaAuthor(e.target.value)} placeholder="作成者名" className="dq-input w-full text-sm" style={{ padding: '6px 10px' }} />
+                </div>
+              </div>
+            )}
+
+            {state.annotations.length > 0 && (
+              <button
+                onClick={() => {
+                  const data = {
+                    fileName: state.file?.name || 'unknown',
+                    exportedAt: new Date().toISOString(),
+                    annotations: state.annotations.map(ann => ({
+                      type: ann.type,
+                      page: ann.page,
+                      position: ann.position,
+                      content: ann.type === 'image' ? '[画像データ]' : ann.content,
+                      style: ann.style,
+                      createdAt: new Date(ann.createdAt).toISOString(),
+                    })),
+                  };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `annotations_${filename.trim() || 'doc'}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  showDqToast('アノテーションをJSONで保存しました', 'success');
+                }}
+                disabled={saving}
+                className="dq-btn w-full flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
+              >
+                <FileJson size={20} />
+                アノテーションをJSON出力
+              </button>
+            )}
+            <button
+              onClick={handleImportJSON}
+              disabled={saving}
+              className="dq-btn w-full flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)', boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)' }}
+            >
+              <Upload size={20} />
+              アノテーションJSON読込
+            </button>
+          </div>
+        )}
       </div>
     </SlidePanel>
   );

@@ -1,17 +1,28 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus, Copy, FileText, Scissors, Merge } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import { YuunamaLilith } from '@/components/dq-characters';
 import { loadDocumentFromBytes, renderPageToDataURL } from '@/lib/pdf-engine';
+import {
+  getPageNumberAfterReorder,
+  rebaseAnnotationsAfterDelete,
+  rebaseAnnotationsAfterDuplicate,
+  rebaseAnnotationsAfterInsertBlank,
+  rebaseAnnotationsAfterReorder,
+} from '@/lib/annotation-page-ops';
+import { parsePageRange } from '@/lib/page-range';
 import { rotatePage, deletePage, mergePdfs, reorderPages, splitPdf, insertBlankPage, duplicatePage, savePdfAsBlob, downloadBlob } from '@/lib/pdf-editor';
 import { dqConfirm } from '@/components/dq-confirm';
 
 interface PageThumb {
   index: number;
   dataURL: string;
+  width: number;
+  height: number;
 }
 
 type TabMode = 'pages' | 'merge' | 'split';
@@ -32,7 +43,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     // プレースホルダーを先に設定
     const placeholders: PageThumb[] = [];
     for (let i = 0; i < doc.numPages; i++) {
-      placeholders.push({ index: i, dataURL: '' });
+      placeholders.push({ index: i, dataURL: '', width: 3, height: 4 });
     }
     setThumbnails(placeholders);
     setLoading(false);
@@ -42,9 +53,9 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
       await new Promise<void>((resolve) => {
         setTimeout(async () => {
           try {
-            const dataURL = await renderPageToDataURL(doc, i, 0.3);
+            const rendered = await renderPageToDataURL(doc, i, 0.3);
             setThumbnails((prev) =>
-              prev.map((t) => (t.index === i - 1 ? { ...t, dataURL } : t))
+              prev.map((t) => (t.index === i - 1 ? { ...t, ...rendered } : t))
             );
           } catch {
             // サムネイル生成失敗は無視（プレースホルダーのまま）
@@ -69,6 +80,9 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
       type: 'UPDATE_PDF_DATA',
       payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: state.numPages },
     });
+    if (state.annotations.some((annotation) => annotation.page === pageIndex + 1)) {
+      showDqToast('回転後はこのページのアノテーション位置を確認してください', 'info');
+    }
     generateThumbnails();
   };
 
@@ -77,13 +91,20 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     if (!(await dqConfirm(`ページ${pageIndex + 1}を\n削除しますか？`))) return;
     const newBytes = await deletePage(state.pdfData, pageIndex);
     const newNumPages = state.numPages - 1;
+    const deletedPage = pageIndex + 1;
+    const nextCurrentPage =
+      state.currentPage > deletedPage
+        ? state.currentPage - 1
+        : Math.min(state.currentPage, newNumPages);
     dispatch({
       type: 'UPDATE_PDF_DATA',
-      payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: newNumPages },
+      payload: {
+        pdfData: newBytes.buffer as ArrayBuffer,
+        numPages: newNumPages,
+        annotations: rebaseAnnotationsAfterDelete(state.annotations, deletedPage),
+        currentPage: nextCurrentPage,
+      },
     });
-    if (state.currentPage > newNumPages) {
-      dispatch({ type: 'SET_PAGE', payload: newNumPages });
-    }
     generateThumbnails();
   };
 
@@ -101,15 +122,13 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     const newBytes = await reorderPages(state.pdfData, newOrder);
     dispatch({
       type: 'UPDATE_PDF_DATA',
-      payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages: total },
+      payload: {
+        pdfData: newBytes.buffer as ArrayBuffer,
+        numPages: total,
+        annotations: rebaseAnnotationsAfterReorder(state.annotations, newOrder),
+        currentPage: getPageNumberAfterReorder(state.currentPage, newOrder),
+      },
     });
-
-    // 現在のページが移動対象なら追従
-    if (state.currentPage === pageIndex + 1) {
-      dispatch({ type: 'SET_PAGE', payload: swapWith + 1 });
-    } else if (state.currentPage === swapWith + 1) {
-      dispatch({ type: 'SET_PAGE', payload: pageIndex + 1 });
-    }
 
     generateThumbnails();
   };
@@ -120,7 +139,17 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     const doc = await loadDocumentFromBytes(newBytes.buffer as ArrayBuffer);
     const numPages = doc.numPages;
     doc.destroy();
-    dispatch({ type: 'UPDATE_PDF_DATA', payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages } });
+    const insertedPage = afterIndex + 2;
+    const nextCurrentPage = state.currentPage >= insertedPage ? state.currentPage + 1 : state.currentPage;
+    dispatch({
+      type: 'UPDATE_PDF_DATA',
+      payload: {
+        pdfData: newBytes.buffer as ArrayBuffer,
+        numPages,
+        annotations: rebaseAnnotationsAfterInsertBlank(state.annotations, insertedPage),
+        currentPage: nextCurrentPage,
+      },
+    });
     showDqToast('空白ページを挿入しました', 'success');
     generateThumbnails();
   };
@@ -131,7 +160,17 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     const doc = await loadDocumentFromBytes(newBytes.buffer as ArrayBuffer);
     const numPages = doc.numPages;
     doc.destroy();
-    dispatch({ type: 'UPDATE_PDF_DATA', payload: { pdfData: newBytes.buffer as ArrayBuffer, numPages } });
+    const duplicatedPage = pageIndex + 1;
+    const nextCurrentPage = state.currentPage > duplicatedPage ? state.currentPage + 1 : state.currentPage;
+    dispatch({
+      type: 'UPDATE_PDF_DATA',
+      payload: {
+        pdfData: newBytes.buffer as ArrayBuffer,
+        numPages,
+        annotations: rebaseAnnotationsAfterDuplicate(state.annotations, duplicatedPage),
+        currentPage: nextCurrentPage,
+      },
+    });
     showDqToast('ページを複製しました', 'success');
     generateThumbnails();
   };
@@ -168,19 +207,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
   const handleSplit = async () => {
     if (!state.pdfData || !splitRange.trim()) return;
-    // Parse range: "1-3, 5, 7-10"
-    const indices: number[] = [];
-    for (const part of splitRange.split(',')) {
-      const trimmed = part.trim();
-      const match = trimmed.match(/^(\d+)(?:-(\d+))?$/);
-      if (match) {
-        const start = parseInt(match[1]) - 1;
-        const end = match[2] ? parseInt(match[2]) - 1 : start;
-        for (let i = start; i <= end && i < state.numPages; i++) {
-          if (i >= 0 && !indices.includes(i)) indices.push(i);
-        }
-      }
-    }
+    const indices = parsePageRange(splitRange, state.numPages);
     if (indices.length === 0) {
       showDqToast('有効なページ番号を入力してください', 'error');
       return;
@@ -316,7 +343,14 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     }}
                   >
                     {thumb.dataURL ? (
-                      <img src={thumb.dataURL} alt={`ページ ${thumb.index + 1}`} className="w-full" />
+                      <Image
+                        src={thumb.dataURL}
+                        alt={`ページ ${thumb.index + 1}`}
+                        width={thumb.width}
+                        height={thumb.height}
+                        className="w-full h-auto"
+                        unoptimized
+                      />
                     ) : (
                       <div className="w-full aspect-[3/4] flex items-center justify-center" style={{ background: '#2a1e12' }}>
                         <div className="dq-spinner-sm" />

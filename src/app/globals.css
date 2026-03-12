@@ -1,4 +1,4 @@
-/* フォントはlayout.tsxの<link>タグで読み込み済み（CSS @importはレンダリングブロックのため削除） */
+/* フォントはnext/font経由で注入 */
 @import "tailwindcss";
 
 :root {
@@ -88,7 +88,7 @@ body {
     radial-gradient(circle at 75% 25%, rgba(212,160,23,0.05) 0%, transparent 6%),
     radial-gradient(circle at 60% 80%, rgba(126,200,227,0.03) 0%, transparent 7%);
   color: var(--foreground);
-  font-family: 'DotGothic16', 'Noto Sans JP', monospace;
+  font-family: var(--font-dot-gothic), var(--font-noto-sans-jp), monospace;
 }
 
 /* ピクセルアートはDQテーマ要素のみに適用（PDFやユーザー画像には適用しない） */
@@ -123,7 +123,7 @@ body {
 
 /* ===== テキスト ===== */
 .dq-title {
-  font-family: 'DotGothic16', monospace;
+  font-family: var(--font-dot-gothic), var(--font-noto-sans-jp), monospace;
   color: var(--ynk-gold);
   text-shadow: 2px 2px 0 rgba(0,0,0,0.8), 0 0 10px rgba(212,160,23,0.4), 0 0 20px rgba(212,160,23,0.15);
   letter-spacing: 0.08em;
@@ -133,14 +133,14 @@ body {
   color: var(--ynk-bone);
   text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
   line-height: 1.8;
-  font-family: 'DotGothic16', monospace;
+  font-family: var(--font-dot-gothic), var(--font-noto-sans-jp), monospace;
 }
 
 /* ===== 掘削ボタン（8bit ピクセルアート強化） ===== */
 .dq-btn {
   background: linear-gradient(180deg, #d4a017 0%, #b88a10 40%, #a07010 100%);
   color: #1a1008;
-  font-family: 'DotGothic16', monospace;
+  font-family: var(--font-dot-gothic), var(--font-noto-sans-jp), monospace;
   font-weight: bold;
   border: none;
   border-radius: 0;
@@ -223,7 +223,7 @@ body {
 .dq-btn-small {
   background: linear-gradient(180deg, #d4a017 0%, #b88a10 40%, #a07010 100%);
   color: #1a1008;
-  font-family: 'DotGothic16', monospace;
+  font-family: var(--font-dot-gothic), var(--font-noto-sans-jp), monospace;
   font-weight: bold;
   font-size: 12px;
   border: none;
@@ -271,7 +271,7 @@ body {
   border-radius: 0;
   color: var(--ynk-bone);
   padding: 10px 14px;
-  font-family: 'DotGothic16', monospace;
+  font-family: var(--font-dot-gothic), var(--font-noto-sans-jp), monospace;
   font-size: 16px;
   box-shadow:
     inset 0 2px 4px rgba(0,0,0,0.4),

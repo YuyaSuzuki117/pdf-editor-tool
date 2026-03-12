@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Undo2 } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
+import { notoSansCanvasFontFamily, stampCanvasFontFamily } from '@/lib/fonts';
 import { showDqToast } from '@/lib/toast';
 import { loadSettings, saveSettings, saveSignature, getSavedSignatures, removeSignature } from '@/lib/user-settings';
 import SlidePanel from './slide-panel';
@@ -41,7 +42,7 @@ function dateStampToDataURL(dateStr: string, size: typeof stampSizes[number]): s
   ctx.lineWidth = 2;
   ctx.strokeRect(2, 2, size.width - 4, size.height - 4);
   ctx.fillStyle = '#1e40af';
-  ctx.font = `bold ${size.fontSize * 0.7}px "Noto Sans JP", sans-serif`;
+  ctx.font = `bold ${size.fontSize * 0.7}px ${notoSansCanvasFontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(dateStr, size.width / 2, size.height / 2);
@@ -65,7 +66,7 @@ function customStampToDataURL(text: string, stampColor: string, size: typeof sta
   ctx.fillStyle = stampColor;
   const maxFontSize = size.fontSize;
   const scaledSize = Math.min(maxFontSize, (size.width - 20) / text.length * 1.6);
-  ctx.font = `bold ${scaledSize}px "DotGothic16", "Noto Sans JP", sans-serif`;
+  ctx.font = `bold ${scaledSize}px ${stampCanvasFontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, size.width / 2, size.height / 2);
@@ -125,7 +126,7 @@ function stampToDataURL(stamp: StampDef, size: typeof stampSizes[number]): strin
 
   // テキスト
   ctx.fillStyle = stamp.color;
-  ctx.font = `bold ${size.fontSize}px "DotGothic16", "Noto Sans JP", sans-serif`;
+  ctx.font = `bold ${size.fontSize}px ${stampCanvasFontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(stamp.label, size.width / 2, size.height / 2);
@@ -503,7 +504,7 @@ export default function StampPanel({ isOpen, onClose }: { isOpen: boolean; onClo
                     color: s.color,
                     fontWeight: 'bold',
                     fontSize: 13,
-                    fontFamily: '"DotGothic16", monospace',
+                    fontFamily: 'var(--font-dot-gothic), var(--font-noto-sans-jp), monospace',
                     boxShadow: selectedStamp?.label === s.label ? '0 0 12px rgba(212,160,23,0.5)' : 'none',
                     transform: selectedStamp?.label === s.label ? 'rotate(-3deg)' : 'none',
                   }}

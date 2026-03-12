@@ -143,12 +143,12 @@ const PageNav = React.memo(function PageNav() {
       {state.numPages > 2 && (
         <button
           onClick={() => setShowGrid(!showGrid)}
-          className="dq-window flex items-center justify-center w-6 h-6 min-h-[32px] min-w-[32px] rounded-lg select-none active:scale-90 transition-all ml-0.5"
+          className="dq-window flex items-center justify-center w-9 h-9 min-h-[44px] min-w-[44px] rounded-lg select-none active:scale-90 transition-all ml-1"
           style={{ cursor: 'pointer', border: showGrid ? '2px solid #d4a017' : undefined }}
           aria-label="ページ一覧"
           title="ページ一覧"
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="var(--ynk-gold)" strokeWidth="1.5">
+          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="var(--ynk-gold)" strokeWidth="1.5">
             <rect x="1" y="1" width="5" height="5" rx="0.5" />
             <rect x="10" y="1" width="5" height="5" rx="0.5" />
             <rect x="1" y="10" width="5" height="5" rx="0.5" />

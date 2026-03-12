@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PDF Editor Tool
 
-## Getting Started
+Dragon Quest themed PDF editor built with Next.js, `pdfjs-dist`, and `pdf-lib`.
 
-First, run the development server:
+## Requirements
+
+- Node.js `>=20.9.0`
+- npm
+
+Current local baseline on this machine: Node `v22.17.0`.
+
+## Commands
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run typecheck
+npm run build
+npm run verify
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run verify` runs lint, typecheck, and build in sequence.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Map
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app/page.tsx`: app shell, keyboard shortcuts, clipboard paste, panel wiring
+- `src/components/pdf-viewer.tsx`: PDF rendering, tap events, overlay annotations
+- `src/components/save-panel.tsx`: export flow and viewport-to-PDF coordinate conversion
+- `src/components/page-manager.tsx`: rotate, delete, reorder, duplicate, merge, split
+- `src/contexts/pdf-context.tsx`: shared state plus undo/redo
+- `src/lib/pdf-editor.ts`: low-level PDF writes with `pdf-lib`
+- `src/lib/pdf-engine.ts`: document loading and raster rendering with `pdfjs-dist`
+- `src/types/pdf.ts`: source of truth for tool and annotation contracts
 
-## Learn More
+## Working Rules
 
-To learn more about Next.js, take a look at the following resources:
+- UI page numbers are 1-based. Convert to 0-based only when calling low-level PDF APIs.
+- Annotation positions are stored in rendered viewport space. Preserve `renderScale` and divide by it before exporting back into the PDF.
+- Route annotation edits through reducer actions so undo/redo stays coherent.
+- After mutating PDF bytes, dispatch `UPDATE_PDF_DATA` and re-check page count and current page behavior.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Smoke Check
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Use `test.pdf` or `test-e2e.pdf`.
 
-## Deploy on Vercel
+1. Open a PDF.
+2. Add text, drawing, highlight, and image or stamp annotations.
+3. Use undo and redo.
+4. Save as PDF.
+5. If page operations changed, also rotate, duplicate, delete, or reorder a page.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Codex Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This repo now includes:
+
+- repo instructions in `AGENTS.md`
+- project skill `pdf-editor-nextjs`
+- shared skills for PDF work, Playwright verification, and security review
+- configured MCP entries for Playwright, Vercel, and repo filesystem access
+
+Restart Codex after skill changes so new skills appear in-session.

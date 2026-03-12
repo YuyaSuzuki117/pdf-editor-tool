@@ -69,7 +69,7 @@ export function DqToast({ message, type = "info", duration = 3000, onClose }: Dq
         <span
           className={`text-2xl ${type === "levelup" ? "dq-levelup" : ""}`}
           style={{
-            fontFamily: "'DotGothic16', monospace",
+            fontFamily: "var(--font-dot-gothic), var(--font-noto-sans-jp), monospace",
             textShadow: "2px 2px 0 rgba(0,0,0,0.8)",
             color:
               type === "success"
@@ -97,7 +97,7 @@ export function DqToast({ message, type = "info", duration = 3000, onClose }: Dq
           onClick={handleClose}
           style={{
             color: "#e8dcc8",
-            fontFamily: "'DotGothic16', monospace",
+            fontFamily: "var(--font-dot-gothic), var(--font-noto-sans-jp), monospace",
             fontSize: "12px",
             opacity: 0.6,
             background: "none",

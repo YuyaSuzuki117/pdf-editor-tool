@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { PDFProvider, usePDF } from '@/contexts/pdf-context';
 import DqDropZone from '@/components/dq-drop-zone';
 import DqHeader from '@/components/dq-header';
@@ -27,16 +27,23 @@ import { mergePdfs } from '@/lib/pdf-editor';
 import { loadDocumentFromBytes } from '@/lib/pdf-engine';
 import type { ToolMode } from '@/types/pdf';
 
+type DraftSnapshot = NonNullable<ReturnType<typeof loadDraft>>;
+
 function PDFApp() {
   const { state, dispatch, undoStackSize, redoStackSize } = usePDF();
   const isModifiedRef = useRef(state.isModified);
-  isModifiedRef.current = state.isModified;
   const stateRef = useRef(state);
-  stateRef.current = state;
   const undoStackSizeRef = useRef(undoStackSize);
-  undoStackSizeRef.current = undoStackSize;
   const redoStackSizeRef = useRef(redoStackSize);
-  redoStackSizeRef.current = redoStackSize;
+  const prevModifiedRef = useRef(state.isModified);
+  const [pendingDraft, setPendingDraft] = useState<DraftSnapshot | null>(null);
+
+  useEffect(() => {
+    isModifiedRef.current = state.isModified;
+    stateRef.current = state;
+    undoStackSizeRef.current = undoStackSize;
+    redoStackSizeRef.current = redoStackSize;
+  }, [state, undoStackSize, redoStackSize]);
 
   // 未保存警告: beforeunload
   useEffect(() => {
@@ -61,24 +68,42 @@ function PDFApp() {
   }, [state.annotations, state.file, state.pdfData]);
 
   useEffect(() => {
-    if (!state.isModified && state.pdfData) {
+    const wasModified = prevModifiedRef.current;
+    if (wasModified && !state.isModified && state.pdfData) {
       clearDraft();
     }
+    prevModifiedRef.current = state.isModified;
   }, [state.isModified, state.pdfData]);
 
   useEffect(() => {
-    if (!state.file) return;
+    if (!state.file) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pending draft comes from client-only localStorage after file load
+      setPendingDraft(null);
+      return;
+    }
     const draft = loadDraft();
     if (draft && draft.fileName === state.file.name && draft.annotations.length > 0 && state.annotations.length === 0) {
+      setPendingDraft(draft);
       setTimeout(() => {
-        showDqToast(`前回の下書き(${draft.annotations.length}件)があります`, 'info');
-        for (const ann of draft.annotations) {
-          dispatch({ type: 'ADD_ANNOTATION', payload: ann });
-        }
-      }, 500);
+        showDqToast(`前回の下書きが見つかりました (${draft.annotations.length}件)`, 'info');
+      }, 300);
+    } else {
+      setPendingDraft(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.file?.name]);
+  }, [state.file, state.annotations.length]);
+
+  const handleRestoreDraft = useCallback(() => {
+    if (!pendingDraft) return;
+    dispatch({ type: 'RESTORE_DRAFT', payload: pendingDraft.annotations });
+    showDqToast(`下書きを復元しました (${pendingDraft.annotations.length}件)`, 'success');
+    setPendingDraft(null);
+  }, [dispatch, pendingDraft]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    setPendingDraft(null);
+    showDqToast('保存済みの下書きを破棄しました', 'info');
+  }, []);
 
   // Ctrl+V: クリップボードから画像を貼り付け
   useEffect(() => {
@@ -276,6 +301,45 @@ function PDFApp() {
       onDrop={handleDropMerge}
     >
       <DqHeader />
+      {pendingDraft && (
+        <div className="px-3 py-2" style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '2px solid rgba(92,74,46,0.45)' }}>
+          <div
+            className="dq-message-box flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            style={{
+              background: 'rgba(212,160,23,0.12)',
+              border: '2px solid var(--ynk-gold)',
+              borderRadius: 4,
+              padding: '12px 16px',
+            }}
+          >
+            <div className="min-w-0">
+              <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
+                前回の下書きが残っています
+              </p>
+              <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.8 }}>
+                {pendingDraft.annotations.length}件の編集を復元するか、破棄するか選べます
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={handleRestoreDraft} className="dq-btn px-4 py-2">
+                復元する
+              </button>
+              <button
+                onClick={handleDiscardDraft}
+                className="dq-btn px-4 py-2"
+                style={{
+                  background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)',
+                  color: 'var(--ynk-bone)',
+                  borderColor: 'var(--window-border)',
+                  boxShadow: '0 3px 0 #2a1c12, 0 4px 8px rgba(0,0,0,0.3)',
+                }}
+              >
+                破棄する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <SearchPanel />
       <PDFViewer />
       <PageThumbnails />

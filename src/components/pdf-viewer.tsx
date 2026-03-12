@@ -876,7 +876,7 @@ export default function PDFViewer() {
             background: 'linear-gradient(180deg, rgba(42,30,18,0.95) 0%, rgba(26,16,8,0.9) 100%)',
             border: '2px solid var(--ynk-gold)',
             padding: '4px 16px',
-            fontFamily: 'DotGothic16, monospace',
+            fontFamily: 'var(--font-dot-gothic), var(--font-noto-sans-jp), monospace',
             fontSize: 12,
             color: 'var(--ynk-gold)',
             textShadow: '0 0 8px rgba(212,160,23,0.4)',

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 (async () => {
   const doc = await PDFDocument.create();
