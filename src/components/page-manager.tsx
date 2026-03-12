@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus, Copy, FileText, Scissors, Merge } from 'lucide-react';
+import { RotateCw, Trash2, ChevronUp, ChevronDown, X, FilePlus, Copy, FileText, Scissors, Merge, GripVertical } from 'lucide-react';
 import { usePDF } from '@/contexts/pdf-context';
 import { showDqToast } from '@/lib/toast';
 import { YuunamaLilith } from '@/components/dq-characters';
@@ -21,7 +21,7 @@ import { dqConfirm } from '@/components/dq-confirm';
 import { uiEvents } from '@/lib/ui-events';
 
 interface PageThumb {
-  index: number;
+  id: string;
   dataURL: string;
   width: number;
   height: number;
@@ -29,13 +29,23 @@ interface PageThumb {
 
 type TabMode = 'pages' | 'merge' | 'split';
 
+function reorderByMove<T>(items: T[], from: number, to: number) {
+  const next = [...items];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
 export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { state, dispatch } = usePDF();
   const [thumbnails, setThumbnails] = useState<PageThumb[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   const [tab, setTab] = useState<TabMode>('pages');
   const [mergeFiles, setMergeFiles] = useState<{ name: string; data: ArrayBuffer; pages: number }[]>([]);
   const [splitRange, setSplitRange] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
 
   const generateThumbnails = useCallback(async () => {
     if (!state.pdfData) return;
@@ -45,7 +55,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     // プレースホルダーを先に設定
     const placeholders: PageThumb[] = [];
     for (let i = 0; i < doc.numPages; i++) {
-      placeholders.push({ index: i, dataURL: '', width: 3, height: 4 });
+      placeholders.push({ id: `page-${Date.now()}-${i}`, dataURL: '', width: 3, height: 4 });
     }
     setThumbnails(placeholders);
     setLoading(false);
@@ -57,7 +67,7 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
           try {
             const rendered = await renderPageToDataURL(doc, i, 0.3);
             setThumbnails((prev) =>
-              prev.map((t) => (t.index === i - 1 ? { ...t, ...rendered } : t))
+              prev.map((t, index) => (index === i - 1 ? { ...t, ...rendered } : t))
             );
           } catch {
             // サムネイル生成失敗は無視（プレースホルダーのまま）
@@ -90,6 +100,34 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
       window.removeEventListener(uiEvents.openPageManagerSplit, openSplit);
     };
   }, []);
+
+  const commitReorder = useCallback(async (from: number, to: number) => {
+    if (!state.pdfData || from === to) return;
+    const newOrder = reorderByMove(Array.from({ length: state.numPages }, (_, index) => index), from, to);
+    setIsReordering(true);
+    try {
+      const newBytes = await reorderPages(state.pdfData, newOrder);
+      dispatch({
+        type: 'UPDATE_PDF_DATA',
+        payload: {
+          pdfData: newBytes.buffer as ArrayBuffer,
+          numPages: state.numPages,
+          annotations: rebaseAnnotationsAfterReorder(state.annotations, newOrder),
+          currentPage: getPageNumberAfterReorder(state.currentPage, newOrder),
+        },
+      });
+      setThumbnails((prev) => reorderByMove(prev, from, to));
+    } finally {
+      setIsReordering(false);
+    }
+  }, [dispatch, state.annotations, state.currentPage, state.numPages, state.pdfData]);
+
+  const displayThumbnails = useMemo(() => {
+    if (draggedIndex === null || dropIndex === null || draggedIndex === dropIndex) {
+      return thumbnails;
+    }
+    return reorderByMove(thumbnails, draggedIndex, dropIndex);
+  }, [draggedIndex, dropIndex, thumbnails]);
 
   const handleRotate = async (pageIndex: number) => {
     if (!state.pdfData) return;
@@ -138,24 +176,8 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     const total = state.numPages;
     if (direction === 'up' && pageIndex === 0) return;
     if (direction === 'down' && pageIndex >= total - 1) return;
-
-    const swapWith = direction === 'up' ? pageIndex - 1 : pageIndex + 1;
-    const newOrder = Array.from({ length: total }, (_, i) => i);
-    newOrder[pageIndex] = swapWith;
-    newOrder[swapWith] = pageIndex;
-
-    const newBytes = await reorderPages(state.pdfData, newOrder);
-    dispatch({
-      type: 'UPDATE_PDF_DATA',
-      payload: {
-        pdfData: newBytes.buffer as ArrayBuffer,
-        numPages: total,
-        annotations: rebaseAnnotationsAfterReorder(state.annotations, newOrder),
-        currentPage: getPageNumberAfterReorder(state.currentPage, newOrder),
-      },
-    });
-
-    generateThumbnails();
+    const targetIndex = direction === 'up' ? pageIndex - 1 : pageIndex + 1;
+    await commitReorder(pageIndex, targetIndex);
   };
 
   const handleInsertBlank = async (afterIndex: number) => {
@@ -242,6 +264,29 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
     const blob = savePdfAsBlob(result);
     downloadBlob(blob, `split_p${indices.map(i => i + 1).join('-')}.pdf`);
     showDqToast(`${indices.length}ページを抽出しました`, 'success');
+  };
+
+  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, index: number) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+    setDraggedIndex(index);
+    setDropIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDropIndex(null);
+  };
+
+  const handleDropReorder = async (targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      handleDragEnd();
+      return;
+    }
+    const sourceIndex = draggedIndex;
+    handleDragEnd();
+    await commitReorder(sourceIndex, targetIndex);
+    showDqToast(`ページ${sourceIndex + 1}を${targetIndex + 1}番目へ移動しました`, 'success');
   };
 
   if (!isOpen) return null;
@@ -336,6 +381,39 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
       {/* ページタブ - サムネイルグリッド */}
       {tab === 'pages' && <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+        <div
+          className="mb-4 flex flex-col gap-2 rounded-md border px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            background: 'rgba(0,0,0,0.18)',
+            borderColor: isReordering ? 'rgba(212,160,23,0.55)' : 'rgba(92,74,46,0.4)',
+          }}
+        >
+          <div>
+            <p className="dq-text text-sm" style={{ color: 'var(--ynk-gold)' }}>
+              サムネイルをドラッグして、直感的に並べ替え
+            </p>
+            <p className="dq-text text-xs mt-1" style={{ color: 'var(--ynk-bone)', opacity: 0.72 }}>
+              順番変更後はサムネイルを描き直さず、そのまま軽く更新します
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="dq-text rounded-full px-2 py-1 text-[10px]"
+              style={{
+                background: 'rgba(212,160,23,0.1)',
+                border: '1px solid rgba(212,160,23,0.3)',
+                color: 'var(--ynk-gold)',
+              }}
+            >
+              現在ページ {state.currentPage}/{state.numPages}
+            </span>
+            {isReordering && (
+              <span className="dq-text text-[10px]" style={{ color: 'var(--ynk-bone)', opacity: 0.7 }}>
+                並べ替え中...
+              </span>
+            )}
+          </div>
+        </div>
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <YuunamaLilith size={56} bounce />
@@ -343,34 +421,60 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-            {thumbnails.map((thumb) => {
-              const isActive = state.currentPage === thumb.index + 1;
-              const isFirst = thumb.index === 0;
-              const isLast = thumb.index === thumbnails.length - 1;
+            {displayThumbnails.map((thumb, displayIndex) => {
+              const isActive = state.currentPage === displayIndex + 1;
+              const isFirst = displayIndex === 0;
+              const isLast = displayIndex === displayThumbnails.length - 1;
+              const isDropTarget = draggedIndex !== null && dropIndex === displayIndex && draggedIndex !== displayIndex;
+              const isDraggingCard = draggedIndex === displayIndex;
 
               return (
-                <div key={thumb.index} className="relative group flex flex-col items-center">
+                <div
+                  key={thumb.id}
+                  className="relative group flex flex-col items-center"
+                  draggable={!isReordering}
+                  onDragStart={(event) => handleDragStart(event, displayIndex)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (draggedIndex !== null && dropIndex !== displayIndex) {
+                      setDropIndex(displayIndex);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    void handleDropReorder(displayIndex);
+                  }}
+                  style={{
+                    opacity: isDraggingCard ? 0.72 : 1,
+                    transform: isDropTarget ? 'translateY(-4px) scale(1.01)' : undefined,
+                    transition: 'transform 0.15s ease, opacity 0.15s ease',
+                  }}
+                >
                   {/* サムネイル */}
                   <div
                     className="dq-thumbnail-frame cursor-pointer w-full transition-shadow"
                     style={{
-                      border: `3px solid ${isActive ? '#d4a017' : '#7a5540'}`,
+                      border: `3px solid ${isDropTarget ? '#facc15' : isActive ? '#d4a017' : '#7a5540'}`,
                       borderRadius: 6,
                       overflow: 'hidden',
                       background: '#1a1008',
-                      boxShadow: isActive
+                      boxShadow: isDropTarget
+                        ? '0 0 0 2px rgba(250,204,21,0.22), 0 10px 20px rgba(0,0,0,0.3)'
+                        : isActive
                         ? '0 0 14px rgba(245, 214, 123, 0.5)'
                         : '0 2px 8px rgba(0,0,0,0.4)',
                     }}
                     onClick={() => {
-                      dispatch({ type: 'SET_PAGE', payload: thumb.index + 1 });
+                      if (draggedIndex !== null) return;
+                      dispatch({ type: 'SET_PAGE', payload: displayIndex + 1 });
                       onClose();
                     }}
                   >
                     {thumb.dataURL ? (
                       <Image
                         src={thumb.dataURL}
-                        alt={`ページ ${thumb.index + 1}`}
+                        alt={`ページ ${displayIndex + 1}`}
                         width={thumb.width}
                         height={thumb.height}
                         className="w-full h-auto"
@@ -385,26 +489,39 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
                   {/* ページ番号 */}
                   <p className="dq-text text-center text-xs mt-1" style={{ color: isActive ? '#d4a017' : 'var(--ynk-bone)', fontWeight: isActive ? 700 : 400 }}>
-                    {thumb.index + 1}
+                    {displayIndex + 1}
                   </p>
+
+                  <div
+                    className="absolute bottom-6 right-1 inline-flex items-center gap-1 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{
+                      background: 'rgba(0,0,0,0.66)',
+                      border: '1px solid rgba(92,74,46,0.5)',
+                      color: 'var(--ynk-gold)',
+                    }}
+                    aria-hidden="true"
+                  >
+                    <GripVertical size={12} />
+                    <span className="dq-text text-[9px]">ドラッグ</span>
+                  </div>
 
                   {/* 操作ボタン群（右上） */}
                   <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRotate(thumb.index); }}
+                      onClick={(e) => { e.stopPropagation(); handleRotate(displayIndex); }}
                       className="dq-btn-small flex items-center justify-center"
                       title="回転"
-                      aria-label={`ページ${thumb.index + 1}を回転`}
+                      aria-label={`ページ${displayIndex + 1}を回転`}
                       style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                     >
                       <RotateCw size={13} />
                     </button>
                     {state.numPages > 1 && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(thumb.index); }}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(displayIndex); }}
                         className="dq-btn-danger flex items-center justify-center"
                         title="削除"
-                        aria-label={`ページ${thumb.index + 1}を削除`}
+                        aria-label={`ページ${displayIndex + 1}を削除`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                       >
                         <Trash2 size={13} />
@@ -416,39 +533,39 @@ export default function PageManager({ isOpen, onClose }: { isOpen: boolean; onCl
                   {state.numPages > 1 && (
                     <div className="absolute top-1 left-1 flex flex-col gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleMove(thumb.index, 'up'); }}
+                        onClick={(e) => { e.stopPropagation(); void handleMove(displayIndex, 'up'); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="前へ移動"
-                        aria-label={`ページ${thumb.index + 1}を前へ移動`}
+                        aria-label={`ページ${displayIndex + 1}を前へ移動`}
                         disabled={isFirst}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isFirst ? 0.3 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
                       >
                         <ChevronUp size={13} />
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleMove(thumb.index, 'down'); }}
+                        onClick={(e) => { e.stopPropagation(); void handleMove(displayIndex, 'down'); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="後へ移動"
-                        aria-label={`ページ${thumb.index + 1}を後へ移動`}
+                        aria-label={`ページ${displayIndex + 1}を後へ移動`}
                         disabled={isLast}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, opacity: isLast ? 0.3 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
                       >
                         <ChevronDown size={13} />
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDuplicate(thumb.index); }}
+                        onClick={(e) => { e.stopPropagation(); handleDuplicate(displayIndex); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="複製"
-                        aria-label={`ページ${thumb.index + 1}を複製`}
+                        aria-label={`ページ${displayIndex + 1}を複製`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3 }}
                       >
                         <Copy size={13} />
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleInsertBlank(thumb.index); }}
+                        onClick={(e) => { e.stopPropagation(); handleInsertBlank(displayIndex); }}
                         className="dq-btn-small flex items-center justify-center"
                         title="空白ページ挿入"
-                        aria-label={`ページ${thumb.index + 1}の後に空白ページ挿入`}
+                        aria-label={`ページ${displayIndex + 1}の後に空白ページ挿入`}
                         style={{ minHeight: 28, minWidth: 28, padding: 3, background: 'linear-gradient(180deg, #5c3d2e 0%, #3d2a1e 100%)', color: 'var(--ynk-bone)', borderColor: 'var(--window-border)' }}
                       >
                         <FilePlus size={13} />
