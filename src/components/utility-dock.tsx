@@ -13,6 +13,7 @@ type DockAction = {
   icon: React.ReactNode;
   onClick: () => void;
   badge?: string | null;
+  disabled?: boolean;
 };
 
 export default function UtilityDock() {
@@ -55,10 +56,11 @@ export default function UtilityDock() {
     {
       id: 'annotations',
       label: '注釈一覧',
-      detail: '絞り込み',
+      detail: state.annotations.length > 0 ? '絞り込み' : 'まだありません',
       icon: <StickyNote size={16} />,
       badge: state.annotations.length > 0 ? String(state.annotations.length) : null,
       onClick: () => emitUiEvent(uiEvents.toggleAnnotationList),
+      disabled: state.annotations.length === 0,
     },
     {
       id: 'pages',
@@ -116,22 +118,35 @@ export default function UtilityDock() {
               <button
                 key={action.id}
                 onClick={() => {
+                  if (action.disabled) return;
                   action.onClick();
                   setIsOpen(false);
                 }}
                 className="relative flex min-h-[52px] items-center gap-3 rounded-2xl px-3 py-2 text-left cursor-pointer select-none active:scale-[0.98] transition-transform"
+                disabled={action.disabled}
+                aria-disabled={action.disabled}
                 style={{
-                  background: 'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.32) 100%)',
-                  border: '1px solid rgba(92,74,46,0.48)',
+                  background: action.disabled
+                    ? 'linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.18) 100%)'
+                    : 'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.32) 100%)',
+                  border: action.disabled
+                    ? '1px solid rgba(92,74,46,0.22)'
+                    : '1px solid rgba(92,74,46,0.48)',
                   color: 'var(--ynk-bone)',
+                  opacity: action.disabled ? 0.55 : 1,
+                  cursor: action.disabled ? 'default' : 'pointer',
                 }}
               >
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(92,74,46,0.85) 0%, rgba(42,30,18,0.92) 100%)',
-                    border: '1px solid rgba(139,105,20,0.45)',
-                    color: 'var(--ynk-gold)',
+                    background: action.disabled
+                      ? 'linear-gradient(180deg, rgba(92,74,46,0.32) 0%, rgba(42,30,18,0.42) 100%)'
+                      : 'linear-gradient(180deg, rgba(92,74,46,0.85) 0%, rgba(42,30,18,0.92) 100%)',
+                    border: action.disabled
+                      ? '1px solid rgba(139,105,20,0.2)'
+                      : '1px solid rgba(139,105,20,0.45)',
+                    color: action.disabled ? 'rgba(200,160,96,0.72)' : 'var(--ynk-gold)',
                   }}
                 >
                   {action.icon}
